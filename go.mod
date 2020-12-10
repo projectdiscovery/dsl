@@ -1,3 +1,3 @@
-module github.com/Mzack9999/dsl
+module github.com/projectdiscovery/dsl
 
 go 1.14
