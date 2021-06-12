@@ -170,12 +170,12 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 	}
 
 	functions["regex"] = func(args ...interface{}) (interface{}, error) {
-		compiled, err := Regex(toString(args[0]))
+		compiled, err := Regex(toString(args[1]))
 		if err != nil {
 			return nil, err
 		}
 
-		return compiled.MatchString(toString(args[1])), nil
+		return compiled.MatchString(toString(args[0])), nil
 	}
 
 	functions["regex_all"] = func(args ...interface{}) (interface{}, error) {
@@ -184,7 +184,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 			if err != nil {
 				return nil, err
 			}
-			if !compiled.MatchString(toString(args[1])) {
+			if !compiled.MatchString(toString(args[0])) {
 				return false, nil
 			}
 		}
@@ -197,7 +197,7 @@ func HelperFunctions() (functions map[string]govaluate.ExpressionFunction) {
 			if err != nil {
 				return nil, err
 			}
-			if compiled.MatchString(toString(args[1])) {
+			if compiled.MatchString(toString(args[0])) {
 				return true, nil
 			}
 		}
