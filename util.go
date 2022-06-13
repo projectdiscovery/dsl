@@ -12,17 +12,17 @@ func toString(v interface{}) string {
 }
 
 func toSlice(v interface{}) (m []string) {
-	switch v.(type) {
+	switch vv := v.(type) {
 	case []string:
-		for _, item := range v.([]string) {
+		for _, item := range vv {
 			m = append(m, toString(item))
 		}
 	case []int:
-		for _, item := range v.([]int) {
+		for _, item := range vv {
 			m = append(m, toString(item))
 		}
 	case []float64:
-		for _, item := range v.([]float64) {
+		for _, item := range vv {
 			m = append(m, toString(item))
 		}
 	}
