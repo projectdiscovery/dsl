@@ -51,11 +51,11 @@ func init() {
 			length := len(toString(args[0]))
 			return float64(length), nil
 		}),
-		"toupper": validateDsl(1, func(args ...interface{}) (interface{}, error) {
+		"to_upper": validateDsl(1, func(args ...interface{}) (interface{}, error) {
 			return strings.ToUpper(toString(args[0])), nil
 		}),
 
-		"tolower": validateDsl(1, func(args ...interface{}) (interface{}, error) {
+		"to_lower": validateDsl(1, func(args ...interface{}) (interface{}, error) {
 			return strings.ToLower(toString(args[0])), nil
 		}),
 
@@ -75,23 +75,23 @@ func init() {
 			return strings.Trim(toString(args[0]), toString(args[1])), nil
 		}),
 
-		"trimleft": validateDsl(2, func(args ...interface{}) (interface{}, error) {
+		"trim_left": validateDsl(2, func(args ...interface{}) (interface{}, error) {
 			return strings.TrimLeft(toString(args[0]), toString(args[1])), nil
 		}),
 
-		"trimright": validateDsl(2, func(args ...interface{}) (interface{}, error) {
+		"trim_right": validateDsl(2, func(args ...interface{}) (interface{}, error) {
 			return strings.TrimRight(toString(args[0]), toString(args[1])), nil
 		}),
 
-		"trimspace": validateDsl(1, func(args ...interface{}) (interface{}, error) {
+		"trim_space": validateDsl(1, func(args ...interface{}) (interface{}, error) {
 			return strings.TrimSpace(toString(args[0])), nil
 		}),
 
-		"trimprefix": validateDsl(2, func(args ...interface{}) (interface{}, error) {
+		"trim_prefix": validateDsl(2, func(args ...interface{}) (interface{}, error) {
 			return strings.TrimPrefix(toString(args[0]), toString(args[1])), nil
 		}),
 
-		"trimsuffix": validateDsl(2, func(args ...interface{}) (interface{}, error) {
+		"trim_suffix": validateDsl(2, func(args ...interface{}) (interface{}, error) {
 			return strings.TrimSuffix(toString(args[0]), toString(args[1])), nil
 		}),
 
@@ -345,7 +345,7 @@ func init() {
 		}),
 
 		// Time Functions
-		"waitfor": validateDsl(1, func(args ...interface{}) (interface{}, error) {
+		"wait_for": validateDsl(1, func(args ...interface{}) (interface{}, error) {
 			seconds := args[0].(float64)
 			time.Sleep(time.Duration(seconds) * time.Second)
 			return true, nil
