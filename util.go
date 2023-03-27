@@ -52,7 +52,7 @@ func toString(data interface{}) string {
 	}
 }
 
-func toSlice(v interface{}) (m []string) {
+func toStringSlice(v interface{}) (m []string) {
 	switch vv := v.(type) {
 	case []string:
 		for _, item := range vv {
@@ -68,15 +68,6 @@ func toSlice(v interface{}) (m []string) {
 		}
 	}
 	return
-}
-
-func reverseString(s string) string {
-	runes := []rune(s)
-	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
-		runes[i], runes[j] = runes[j], runes[i]
-	}
-
-	return string(runes)
 }
 
 func insertInto(s string, interval int, sep rune) string {

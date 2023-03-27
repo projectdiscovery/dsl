@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Knetic/govaluate"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -81,11 +80,11 @@ func TestDslFunctionSignatures(t *testing.T) {
 			actualResult, err := helperFunctions[methodName](currentTestCase.arguments...)
 
 			if currentTestCase.err == "" {
-				assert.Nil(t, err)
+				require.Nil(t, err)
 			} else {
-				assert.Equal(t, err.Error(), currentTestCase.err)
+				require.Equal(t, err.Error(), currentTestCase.err)
 			}
-			assert.Equal(t, currentTestCase.expected, actualResult)
+			require.Equal(t, currentTestCase.expected, actualResult)
 		})
 	}
 }
@@ -176,7 +175,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 `
 
 	signatures := GetPrintableDslFunctionSignatures(true)
-	assert.Equal(t, expected, signatures)
+	require.Equal(t, expected, signatures)
 
 	coloredSignatures := GetPrintableDslFunctionSignatures(false)
 	require.Contains(t, coloredSignatures, `[93maes_cbc[0m(arg1, arg2, arg3 [38;5;208minterface{}[0m)[38;5;208m interface{}[0m`, "could not get colored signatures")
@@ -272,13 +271,13 @@ func TestDslExpressions(t *testing.T) {
 		`join(", ", split(hex_encode("abcdefg"), 2))`:             "61, 62, 63, 64, 65, 66, 67",
 		`json_minify("{  \"name\":  \"John Doe\",   \"foo\":  \"bar\"     }")`: "{\"foo\":\"bar\",\"name\":\"John Doe\"}",
 		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:             "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
-		`ip_format('127.0.0.1', '1')`:  "127.0.0.1",
-		`ip_format('127.0.0.1', '3')`:  "0177.0.0.01",
-		`ip_format('127.0.0.1', '5')`:  "281472812449793",
-		`ip_format('127.0.1.0', '11')`: "127.0.256",
+		`ip_format('127.0.0.1', '1')`:                                          "127.0.0.1",
+		`ip_format('127.0.0.1', '3')`:                                          "0177.0.0.01",
+		`ip_format('127.0.0.1', '5')`:                                          "281472812449793",
+		`ip_format('127.0.1.0', '11')`:                                         "127.0.256",
 	}
 
-	testDslExpressionScenarios(t, dslExpressions)
+	testDslExpressions(t, dslExpressions)
 }
 
 func TestDateTimeDSLFunction(t *testing.T) {
@@ -331,7 +330,7 @@ func TestDateTimeDslExpressions(t *testing.T) {
 			`date_time("02-01-2006", 1642032000)`:  time.Date(2022, 01, 13, 0, 0, 0, 0, time.UTC).Local().Format("02-01-2006"),
 		}
 
-		testDslExpressionScenarios(t, dslExpressions)
+		testDslExpressions(t, dslExpressions)
 	})
 
 	t.Run("to_unix_time(input string) int", func(t *testing.T) {
@@ -359,7 +358,7 @@ func TestDateTimeDslExpressions(t *testing.T) {
 			dslExpression := fmt.Sprintf(`to_unix_time("%s")`, dateTimeInput)
 			t.Run(dslExpression, func(t *testing.T) {
 				actual := evaluateExpression(t, dslExpression)
-				assert.Equal(t, expectedTime.Unix(), actual)
+				require.Equal(t, expectedTime.Unix(), actual)
 			})
 		}
 	})
@@ -384,7 +383,7 @@ func TestDateTimeDslExpressions(t *testing.T) {
 			dslExpression := fmt.Sprintf(`to_unix_time("%s", "%s")`, testScenario.inputDateTime, testScenario.layout)
 			t.Run(dslExpression, func(t *testing.T) {
 				actual := evaluateExpression(t, dslExpression)
-				assert.Equal(t, testScenario.expectedTime.Unix(), actual)
+				require.Equal(t, testScenario.expectedTime.Unix(), actual)
 			})
 		}
 	})
@@ -421,7 +420,7 @@ func TestRandDslExpressions(t *testing.T) {
 
 			stringResult := toString(actualResult)
 
-			assert.True(t, compiledTester.MatchString(stringResult), "The result '%s' of '%s' expression does not match the expected regex: '%s'", actualResult, randDslExpression, regexTester)
+			require.True(t, compiledTester.MatchString(stringResult), "The result '%s' of '%s' expression does not match the expected regex: '%s'", actualResult, randDslExpression, regexTester)
 		})
 	}
 }
@@ -444,7 +443,7 @@ func TestRandIntDslExpressions(t *testing.T) {
 			actualResult := evaluateExpression(t, randIntDslExpression)
 
 			actualIntResult := actualResult.(int)
-			assert.True(t, tester(actualIntResult), "The '%d' result of the '%s' expression, does not match th expected validation function.", actualIntResult, randIntDslExpression)
+			require.True(t, tester(actualIntResult), "The '%d' result of the '%s' expression, does not match th expected validation function.", actualIntResult, randIntDslExpression)
 		})
 	}
 }
@@ -463,13 +462,13 @@ func evaluateExpression(t *testing.T, dslExpression string) interface{} {
 	return actualResult
 }
 
-func testDslExpressionScenarios(t *testing.T, dslExpressions map[string]interface{}) {
+func testDslExpressions(t *testing.T, dslExpressions map[string]interface{}) {
 	for dslExpression, expectedResult := range dslExpressions {
 		t.Run(dslExpression, func(t *testing.T) {
 			actualResult := evaluateExpression(t, dslExpression)
 
 			if expectedResult != nil {
-				assert.Equal(t, expectedResult, actualResult)
+				require.Equal(t, expectedResult, actualResult)
 			}
 
 			fmt.Printf("%s: \t %v\n", dslExpression, actualResult)

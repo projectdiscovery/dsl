@@ -28,19 +28,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/Knetic/govaluate"
 	"github.com/asaskevich/govalidator"
 	"github.com/hashicorp/go-version"
 	"github.com/kataras/jwt"
 	"github.com/logrusorgru/aurora"
+	"github.com/pkg/errors"
 	"github.com/spaolacci/murmur3"
 
 	"github.com/projectdiscovery/dsl/deserialization"
 	"github.com/projectdiscovery/dsl/randomip"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/mapcidr"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 const (
@@ -57,8 +57,8 @@ var (
 	// DefaultHelperFunctions is a pre-compiled list of govaluate DSL functions
 	DefaultHelperFunctions map[string]govaluate.ExpressionFunction
 
-	functionSignaturePattern = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
-	dateFormatRegex          = regexp.MustCompile("%([A-Za-z])")
+	funcSignatureRegex = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
+	dateFormatRegex    = regexp.MustCompile("%([A-Za-z])")
 )
 
 type dslFunction struct {
@@ -75,6 +75,8 @@ var defaultDateTimeLayouts = []string{
 	"2006-01-02 Z07:00",
 	"2006-01-02",
 }
+
+var PrintDebugCallback func(args ...interface{}) error
 
 func init() {
 	tempDslFunctions := map[string]func(string) dslFunction{
@@ -179,7 +181,7 @@ func init() {
 			return strings.TrimSuffix(toString(args[0]), toString(args[1])), nil
 		}),
 		"reverse": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			return reverseString(toString(args[0])), nil
+			return stringsutil.Reverse(toString(args[0])), nil
 		}),
 		"base64": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return base64.StdEncoding.EncodeToString([]byte(toString(args[0]))), nil
@@ -481,7 +483,7 @@ func init() {
 			return compiled.MatchString(toString(args[1])), nil
 		}),
 		"regex_all": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
-			for _, arg := range toSlice(args[1]) {
+			for _, arg := range toStringSlice(args[1]) {
 				compiled, err := Regex(toString(arg))
 				if err != nil {
 					return nil, err
@@ -494,7 +496,7 @@ func init() {
 		}),
 
 		"regex_any": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
-			for _, arg := range toSlice(args[1]) {
+			for _, arg := range toStringSlice(args[1]) {
 				compiled, err := Regex(toString(arg))
 				if err != nil {
 					return nil, err
@@ -507,7 +509,7 @@ func init() {
 		}),
 
 		"equals_any": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
-			for _, arg := range toSlice(args[1]) {
+			for _, arg := range toStringSlice(args[1]) {
 				if args[0] == arg {
 					return true, nil
 				}
@@ -747,7 +749,13 @@ func init() {
 				if len(args) < 1 {
 					return nil, ErrinvalidDslFunction
 				}
-				gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
+				if PrintDebugCallback != nil {
+					if err := PrintDebugCallback(args...); err != nil {
+						return nil, err
+					}
+				} else {
+					gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
+				}
 				return true, nil
 			},
 		),
@@ -760,7 +768,7 @@ func init() {
 				sint, err := strconv.ParseFloat(argStr, 64)
 				return float64(sint), err
 			}
-			return nil, errors.Errorf("%v could not be converted to int", argStr)
+			return nil, fmt.Errorf("%v could not be converted to int", argStr)
 		}),
 		"to_string": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return toString(args[0]), nil
@@ -1087,7 +1095,7 @@ func colorizeDslFunctionSignatures() []string {
 	result := make([]string, 0, len(signatures))
 
 	for _, signature := range signatures {
-		subMatchSlices := functionSignaturePattern.FindAllStringSubmatch(signature, -1)
+		subMatchSlices := funcSignatureRegex.FindAllStringSubmatch(signature, -1)
 		if len(subMatchSlices) != 1 {
 			result = append(result, signature)
 			continue
