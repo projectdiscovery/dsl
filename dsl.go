@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
-	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -23,7 +22,6 @@ import (
 	"math"
 	"math/rand"
 	"net/url"
-	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -36,7 +34,6 @@ import (
 	"github.com/kataras/jwt"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/sashabaranov/go-openai"
 	"github.com/spaolacci/murmur3"
 
 	"github.com/projectdiscovery/dsl/deserialization"
@@ -972,42 +969,6 @@ func init() {
 				return nil, fmt.Errorf("no formatted IP returned")
 			}
 			return formattedIps[0], nil
-		}),
-		"llm_prompt": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			prompt := args[0].(string)
-
-			openaiToken := os.Getenv("OPENAI_TOKEN")
-
-			if openaiToken == "" {
-				return nil, errors.New("no token defined")
-			}
-
-			client := openai.NewClient(openaiToken)
-
-			resp, err := client.CreateChatCompletion(
-				context.Background(),
-				openai.ChatCompletionRequest{
-					Model: openai.GPT3Dot5Turbo,
-					Messages: []openai.ChatCompletionMessage{
-						{
-							Role:    openai.ChatMessageRoleUser,
-							Content: prompt,
-						},
-					},
-				},
-			)
-
-			if err != nil {
-				return nil, err
-			}
-
-			if len(resp.Choices) == 0 {
-				return nil, errors.New("no data")
-			}
-
-			data := resp.Choices[0].Message.Content
-
-			return data, nil
 		}),
 	}
 

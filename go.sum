@@ -66,8 +66,6 @@ github.com/projectdiscovery/utils v0.0.18 h1:gyBMnA4y2ryui0G98iFqKAXuNdoSy6Z6K0/
 github.com/projectdiscovery/utils v0.0.18/go.mod h1:Cu216AlQ7rAYa8aDBqB2OgNfu5p24Uj+tG9RxV8Wbfs=
 github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d h1:hrujxIzL1woJ7AwssoOcM/tq5JjjG2yYOc8odClEiXA=
 github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d/go.mod h1:uugorj2VCxiV1x+LzaIdVa9b4S4qGAcH6cbhh4qVxOU=
-github.com/sashabaranov/go-openai v1.5.8 h1:EfNEmc+Ue+CuRy7iSpNdxfHyiOv2vQsQ2Y0kZRA/z5w=
-github.com/sashabaranov/go-openai v1.5.8/go.mod h1:lj5b/K+zjTSFxVLijLSTDZuP7adOgerWeFyZLUhAKRg=
 github.com/spaolacci/murmur3 v1.1.0 h1:7c1g84S4BPRrfL5Xrdp6fOJ206sU9y293DDHaoy0bLI=
 github.com/spaolacci/murmur3 v1.1.0/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
