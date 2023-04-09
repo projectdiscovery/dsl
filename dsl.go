@@ -44,14 +44,8 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
-const (
-	numbers = "1234567890"
-	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-)
-
 var (
-	ErrinvalidDslFunction = errors.New("invalid DSL function signature")
-	dslFunctions          map[string]dslFunction
+	dslFunctions map[string]dslFunction
 
 	// FunctionNames is a list of function names for expression evaluation usages
 	FunctionNames []string
@@ -59,22 +53,11 @@ var (
 	DefaultHelperFunctions map[string]govaluate.ExpressionFunction
 
 	funcSignatureRegex = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
-	dateFormatRegex    = regexp.MustCompile("%([A-Za-z])")
 )
 
 type dslFunction struct {
 	signatures  []string
 	expressFunc govaluate.ExpressionFunction
-}
-
-var defaultDateTimeLayouts = []string{
-	time.RFC3339,
-	"2006-01-02 15:04:05 Z07:00",
-	"2006-01-02 15:04:05",
-	"2006-01-02 15:04 Z07:00",
-	"2006-01-02 15:04",
-	"2006-01-02 Z07:00",
-	"2006-01-02",
 }
 
 var PrintDebugCallback func(args ...interface{}) error
