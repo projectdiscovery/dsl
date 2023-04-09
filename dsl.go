@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
-	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -23,7 +22,6 @@ import (
 	"math"
 	"math/rand"
 	"net/url"
-	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -36,10 +34,10 @@ import (
 	"github.com/kataras/jwt"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/sashabaranov/go-openai"
 	"github.com/spaolacci/murmur3"
 
 	"github.com/projectdiscovery/dsl/deserialization"
+	"github.com/projectdiscovery/dsl/llm"
 	"github.com/projectdiscovery/dsl/randomip"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/mapcidr"
@@ -523,7 +521,7 @@ func init() {
 		"remove_bad_chars": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			input := toString(args[0])
 			badChars := toString(args[1])
-			return trimAll(input, badChars), nil
+			return TrimAll(input, badChars), nil
 		}),
 		"rand_char": makeDslWithOptionalArgsFunction(
 			"(optionalCharSet string) string",
@@ -564,7 +562,7 @@ func init() {
 						charSet = inputCharSet
 					}
 				}
-				return randSeq(charSet, length), nil
+				return RandSeq(charSet, length), nil
 			},
 		),
 		"rand_text_alphanumeric": makeDslWithOptionalArgsFunction(
@@ -583,8 +581,8 @@ func init() {
 				if argSize == 2 {
 					badChars = toString(args[1])
 				}
-				chars := trimAll(letters+numbers, badChars)
-				return randSeq(chars, length), nil
+				chars := TrimAll(letters+numbers, badChars)
+				return RandSeq(chars, length), nil
 			},
 		),
 		"rand_text_alpha": makeDslWithOptionalArgsFunction(
@@ -603,8 +601,8 @@ func init() {
 				if argSize == 2 {
 					badChars = toString(args[1])
 				}
-				chars := trimAll(letters, badChars)
-				return randSeq(chars, length), nil
+				chars := TrimAll(letters, badChars)
+				return RandSeq(chars, length), nil
 			},
 		),
 		"rand_text_numeric": makeDslWithOptionalArgsFunction(
@@ -622,8 +620,8 @@ func init() {
 					badNumbers = toString(args[1])
 				}
 
-				chars := trimAll(numbers, badNumbers)
-				return randSeq(chars, length), nil
+				chars := TrimAll(numbers, badNumbers)
+				return RandSeq(chars, length), nil
 			},
 		),
 		"rand_int": makeDslWithOptionalArgsFunction(
@@ -975,39 +973,7 @@ func init() {
 		}),
 		"llm_prompt": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			prompt := args[0].(string)
-
-			openaiToken := os.Getenv("OPENAI_TOKEN")
-
-			if openaiToken == "" {
-				return nil, errors.New("no token defined")
-			}
-
-			client := openai.NewClient(openaiToken)
-
-			resp, err := client.CreateChatCompletion(
-				context.Background(),
-				openai.ChatCompletionRequest{
-					Model: openai.GPT3Dot5Turbo,
-					Messages: []openai.ChatCompletionMessage{
-						{
-							Role:    openai.ChatMessageRoleUser,
-							Content: prompt,
-						},
-					},
-				},
-			)
-
-			if err != nil {
-				return nil, err
-			}
-
-			if len(resp.Choices) == 0 {
-				return nil, errors.New("no data")
-			}
-
-			data := resp.Choices[0].Message.Content
-
-			return data, nil
+			return llm.Query(prompt)
 		}),
 	}
 
@@ -1165,21 +1131,6 @@ func colorizeDslFunctionSignatures() []string {
 	}
 
 	return result
-}
-
-func trimAll(s, cutset string) string {
-	for _, c := range cutset {
-		s = strings.ReplaceAll(s, string(c), "")
-	}
-	return s
-}
-
-func randSeq(base string, n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = rune(base[rand.Intn(len(base))])
-	}
-	return string(b)
 }
 
 func toHexEncodedHash(hashToUse hash.Hash, data string) (interface{}, error) {
