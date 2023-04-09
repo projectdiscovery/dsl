@@ -12,13 +12,11 @@ import (
 )
 
 func TestDSLURLEncodeDecode(t *testing.T) {
-	functions := DefaultHelperFunctions
-
-	encoded, err := functions["url_encode"]("&test\"")
+	encoded, err := DefaultHelperFunctions["url_encode"]("&test\"")
 	require.Nil(t, err, "could not url encode")
 	require.Equal(t, "%26test%22", encoded, "could not get url encoded data")
 
-	decoded, err := functions["url_decode"]("%26test%22")
+	decoded, err := DefaultHelperFunctions["url_decode"]("%26test%22")
 	require.Nil(t, err, "could not url encode")
 	require.Equal(t, "&test\"", decoded, "could not get url decoded data")
 }
@@ -53,8 +51,8 @@ func TestDslFunctionSignatures(t *testing.T) {
 		return fmt.Errorf("%w. correct method signature %q", ErrinvalidDslFunction, signature).Error()
 	}
 
-	toUpperSignatureError := createSignatureError("to_upper(arg1 interface{}) interface{}")
-	removeBadCharsSignatureError := createSignatureError("remove_bad_chars(arg1, arg2 interface{}) interface{}")
+	errToUpperSignature := createSignatureError("to_upper(arg1 interface{}) interface{}")
+	errRemoveBadCharsSignature := createSignatureError("remove_bad_chars(arg1, arg2 interface{}) interface{}")
 
 	testCases := []struct {
 		methodName string
@@ -62,15 +60,15 @@ func TestDslFunctionSignatures(t *testing.T) {
 		expected   interface{}
 		err        string
 	}{
-		{"to_upper", []interface{}{}, nil, toUpperSignatureError},
+		{"to_upper", []interface{}{}, nil, errToUpperSignature},
 		{"to_upper", []interface{}{"a"}, "A", ""},
 		{"toupper", []interface{}{"a"}, "A", ""},
-		{"to_upper", []interface{}{"a", "b", "c"}, nil, toUpperSignatureError},
+		{"to_upper", []interface{}{"a", "b", "c"}, nil, errToUpperSignature},
 
-		{"remove_bad_chars", []interface{}{}, nil, removeBadCharsSignatureError},
-		{"remove_bad_chars", []interface{}{"a"}, nil, removeBadCharsSignatureError},
+		{"remove_bad_chars", []interface{}{}, nil, errRemoveBadCharsSignature},
+		{"remove_bad_chars", []interface{}{"a"}, nil, errRemoveBadCharsSignature},
 		{"remove_bad_chars", []interface{}{"abba baab", "b"}, "aa aa", ""},
-		{"remove_bad_chars", []interface{}{"a", "b", "c"}, nil, removeBadCharsSignatureError},
+		{"remove_bad_chars", []interface{}{"a", "b", "c"}, nil, errRemoveBadCharsSignature},
 	}
 
 	helperFunctions := DefaultHelperFunctions

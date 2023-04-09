@@ -5,14 +5,15 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash"
-	"math/rand"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/kataras/jwt"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/dsl/randint"
 )
 
 const (
@@ -119,7 +120,7 @@ func TrimAll(s, cutset string) string {
 func RandSeq(base string, n int) string {
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = rune(base[rand.Intn(len(base))])
+		b[i] = rune(base[randint.IntN(len(base))])
 	}
 	return string(b)
 }
@@ -255,4 +256,16 @@ func toHexEncodedHash(hashToUse hash.Hash, data string) (interface{}, error) {
 		return nil, err
 	}
 	return hex.EncodeToString(hashToUse.Sum(nil)), nil
+}
+
+func aggregate(values []string) string {
+	sort.Strings(values)
+
+	builder := &strings.Builder{}
+	for _, value := range values {
+		builder.WriteRune('\t')
+		builder.WriteString(value)
+		builder.WriteRune('\n')
+	}
+	return builder.String()
 }
