@@ -11,7 +11,7 @@ import (
 var client *openai.Client
 
 func init() {
-	openaiToken := os.Getenv("OPENAI_TOKEN")
+	openaiToken := os.Getenv("OPENAI_API_KEY")
 	if openaiToken != "" {
 		client = openai.NewClient(openaiToken)
 	}
