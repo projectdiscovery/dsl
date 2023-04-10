@@ -93,7 +93,7 @@ func init() {
 		func(args ...interface{}) (interface{}, error) {
 			argCount := len(args)
 			if argCount == 0 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			} else if argCount == 1 {
 				runes := []rune(toString(args[0]))
 				sort.Slice(runes, func(i int, j int) bool {
@@ -117,7 +117,7 @@ func init() {
 		func(args ...interface{}) (interface{}, error) {
 			argCount := len(args)
 			if argCount == 0 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			} else if argCount == 1 {
 				builder := &strings.Builder{}
 				visited := make(map[rune]struct{})
@@ -144,7 +144,7 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("repeat", 2, func(args ...interface{}) (interface{}, error) {
 		count, err := strconv.Atoi(toString(args[1]))
 		if err != nil {
-			return nil, ErrinvalidDslFunction
+			return nil, ErrInvalidDslFunction
 		}
 		return strings.Repeat(toString(args[0]), count), nil
 	}))
@@ -238,10 +238,10 @@ func init() {
 
 			argumentsSize := len(arguments)
 			if argumentsSize < 1 && argumentsSize > 2 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 
-			currentTime, err := getCurrentTimeFromUserInput(arguments)
+			currentTime, err := parseTimeOrNow(arguments)
 			if err != nil {
 				return nil, err
 			}
@@ -347,7 +347,7 @@ func init() {
 		"(str string, prefix ...string) bool",
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 			for _, prefix := range args[1:] {
 				if strings.HasPrefix(toString(args[0]), toString(prefix)) {
@@ -359,7 +359,7 @@ func init() {
 	MustAddFunction(NewWithSingleSignature("line_starts_with",
 		"(str string, prefix ...string) bool", func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 			for _, line := range strings.Split(toString(args[0]), "\n") {
 				for _, prefix := range args[1:] {
@@ -374,7 +374,7 @@ func init() {
 		"(str string, suffix ...string) bool",
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 			for _, suffix := range args[1:] {
 				if strings.HasSuffix(toString(args[0]), toString(suffix)) {
@@ -386,7 +386,7 @@ func init() {
 	MustAddFunction(NewWithSingleSignature("line_ends_with",
 		"(str string, suffix ...string) bool", func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 			for _, line := range strings.Split(toString(args[0]), "\n") {
 				for _, suffix := range args[1:] {
@@ -425,11 +425,11 @@ func init() {
 				separator := toString(arguments[1])
 				count, err := strconv.Atoi(toString(arguments[2]))
 				if err != nil {
-					return nil, ErrinvalidDslFunction
+					return nil, ErrInvalidDslFunction
 				}
 				return strings.SplitN(input, separator, count), nil
 			} else {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 		}))
 	MustAddFunction(NewWithMultipleSignatures("join", []string{
@@ -438,7 +438,7 @@ func init() {
 		func(arguments ...interface{}) (interface{}, error) {
 			argumentsSize := len(arguments)
 			if argumentsSize < 2 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			} else if argumentsSize == 2 {
 				separator := toString(arguments[0])
 				elements, ok := arguments[1].([]string)
@@ -514,7 +514,7 @@ func init() {
 
 			argSize := len(args)
 			if argSize != 0 && argSize != 1 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 
 			if argSize >= 1 {
@@ -534,7 +534,7 @@ func init() {
 
 			argSize := len(args)
 			if argSize < 1 || argSize > 3 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 
 			length = int(args[0].(float64))
@@ -555,7 +555,7 @@ func init() {
 
 			argSize := len(args)
 			if argSize != 1 && argSize != 2 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 
 			length = int(args[0].(float64))
@@ -574,7 +574,7 @@ func init() {
 
 			argSize := len(args)
 			if argSize != 1 && argSize != 2 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 
 			length = int(args[0].(float64))
@@ -590,7 +590,7 @@ func init() {
 		func(args ...interface{}) (interface{}, error) {
 			argSize := len(args)
 			if argSize != 1 && argSize != 2 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 
 			length := int(args[0].(float64))
@@ -608,7 +608,7 @@ func init() {
 		func(args ...interface{}) (interface{}, error) {
 			argSize := len(args)
 			if argSize > 2 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 
 			min := 0
@@ -626,7 +626,7 @@ func init() {
 		"(cidr ...string) string",
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) == 0 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 			var cidrs []string
 			for _, arg := range args {
@@ -648,7 +648,7 @@ func init() {
 
 			argSize := len(args)
 			if argSize != 0 && argSize != 1 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			} else if argSize == 1 {
 				seconds = int(args[0].(float64))
 			}
@@ -682,14 +682,14 @@ func init() {
 				}
 				return parsedTime.Unix(), err
 			} else {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 		}))
 	MustAddFunction(NewWithSingleSignature("wait_for",
 		"(seconds uint)",
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) != 1 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 			seconds := args[0].(float64)
 			time.Sleep(time.Duration(seconds) * time.Second)
@@ -699,7 +699,7 @@ func init() {
 		"(firstVersion, constraints ...string) bool",
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 
 			firstParsed, parseErr := version.NewVersion(toString(args[0]))
@@ -722,7 +722,7 @@ func init() {
 		"(args ...interface{})",
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 1 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 			if PrintDebugCallback != nil {
 				if err := PrintDebugCallback(args...); err != nil {
@@ -767,7 +767,7 @@ func init() {
 		"(str string, start int, optionalEnd int)",
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 			argStr := toString(args[0])
 			start, err := strconv.Atoi(toString(args[1]))
@@ -831,7 +831,7 @@ func init() {
 			argSize := len(args)
 
 			if argSize < 1 || argSize > 4 {
-				return nil, ErrinvalidDslFunction
+				return nil, ErrInvalidDslFunction
 			}
 			jsonString := args[0].(string)
 
@@ -894,7 +894,7 @@ func init() {
 				times[0] = nil
 				times[1] = args[3]
 
-				optionalMaxAgeUnix, err = getCurrentTimeFromUserInput(times)
+				optionalMaxAgeUnix, err = parseTimeOrNow(times)
 				if err != nil {
 					return nil, err
 				}
@@ -990,6 +990,7 @@ func HelperFunctions() map[string]govaluate.ExpressionFunction {
 }
 
 // AddMultiSignatureHelperFunction allows creation of additional helper functions to be supported with templates
+// Deprecated: Use AddFunction(NewWithMultipleSignatures(...)) - kept for backward compatibility
 func AddMultiSignatureHelperFunction(key string, signatureparts []string, value func(args ...interface{}) (interface{}, error)) error {
 	function := NewWithMultipleSignatures(key, signatureparts, value)
 	return AddFunction(function)

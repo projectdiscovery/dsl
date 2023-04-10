@@ -34,7 +34,6 @@ func Query(prompt string) (string, error) {
 			},
 		},
 	)
-
 	if err != nil {
 		return "", err
 	}

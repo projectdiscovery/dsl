@@ -151,7 +151,7 @@ func doSimpleTimeFormat(dateTimeFormatFragment [][]string, currentTime time.Time
 	return dateTimeFormat, nil
 }
 
-func getCurrentTimeFromUserInput(arguments []interface{}) (time.Time, error) {
+func parseTimeOrNow(arguments []interface{}) (time.Time, error) {
 	var currentTime time.Time
 	if len(arguments) == 2 {
 		switch inputUnixTime := arguments[1].(type) {

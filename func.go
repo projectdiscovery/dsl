@@ -9,14 +9,15 @@ import (
 )
 
 type dslFunction struct {
-	name               string
+	name string
+	// if numberOfArgs is defined the signature is automatically generated
 	numberOfArgs       int
 	signatures         []string
 	expressionFunction govaluate.ExpressionFunction
 }
 
 func (d dslFunction) Signatures() []string {
-	// fixed number of args
+	// fixed number of args implies a static signature
 	if d.numberOfArgs > 0 {
 		args := make([]string, 0, d.numberOfArgs)
 		for i := 1; i <= d.numberOfArgs; i++ {
@@ -37,13 +38,14 @@ func (d dslFunction) Signatures() []string {
 }
 
 func (d dslFunction) Exec(args ...interface{}) (interface{}, error) {
+	// fixed number of args implies the possibility to perform matching between the expected number of args and the ones provided
 	if d.numberOfArgs > 0 {
 		if len(args) != d.numberOfArgs {
 			signatures := d.Signatures()
 			if len(signatures) > 0 {
-				return nil, fmt.Errorf("%w. correct method signature %q", ErrinvalidDslFunction, signatures[0])
+				return nil, fmt.Errorf("%w. correct method signature %q", ErrInvalidDslFunction, signatures[0])
 			}
-			return nil, ErrinvalidDslFunction
+			return nil, ErrInvalidDslFunction
 		}
 	}
 
