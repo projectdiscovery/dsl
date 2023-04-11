@@ -35,11 +35,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/dsl/deserialization"
 	"github.com/projectdiscovery/dsl/llm"
-	"github.com/projectdiscovery/dsl/randint"
 	"github.com/projectdiscovery/dsl/randomip"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/mapcidr"
 	maputils "github.com/projectdiscovery/utils/maps"
+	randint "github.com/projectdiscovery/utils/rand"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/spaolacci/murmur3"
 )
@@ -523,8 +523,8 @@ func init() {
 					charSet = inputCharSet
 				}
 			}
-
-			return string(charSet[randint.IntN(len(charSet))]), nil
+			rint, err := randint.IntN(len(charSet))
+			return string(charSet[rint]), err
 		}))
 	MustAddFunction(NewWithSingleSignature("rand_base",
 		"(length uint, optionalCharSet string) string",
@@ -620,7 +620,9 @@ func init() {
 			if argSize == 2 {
 				max = int(args[1].(float64))
 			}
-			return randint.IntN(max-min) + min, nil
+
+			rint, err := randint.IntN(max - min)
+			return rint + min, err
 		}))
 	MustAddFunction(NewWithSingleSignature("rand_ip",
 		"(cidr ...string) string",

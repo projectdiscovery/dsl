@@ -13,7 +13,7 @@ import (
 
 	"github.com/kataras/jwt"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/dsl/randint"
+	randint "github.com/projectdiscovery/utils/rand"
 )
 
 const (
@@ -120,7 +120,8 @@ func TrimAll(s, cutset string) string {
 func RandSeq(base string, n int) string {
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = rune(base[randint.IntN(len(base))])
+		rint, _ := randint.IntN(len(base))
+		b[i] = rune(base[rint])
 	}
 	return string(b)
 }

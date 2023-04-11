@@ -6,8 +6,8 @@ import (
 	"net"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/dsl/randint"
 	iputil "github.com/projectdiscovery/utils/ip"
+	randint "github.com/projectdiscovery/utils/rand"
 )
 
 const (
@@ -18,7 +18,11 @@ func GetRandomIPWithCidr(cidrs ...string) (net.IP, error) {
 	if len(cidrs) == 0 {
 		return nil, fmt.Errorf("must specify at least one cidr")
 	}
-	cidr := cidrs[randint.IntN(len(cidrs))]
+	i, err := randint.IntN(len(cidrs))
+	if err != nil {
+		return nil, err
+	}
+	cidr := cidrs[i]
 
 	if !iputil.IsCIDR(cidr) {
 		return nil, fmt.Errorf("%s is not a valid cidr", cidr)
