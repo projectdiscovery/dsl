@@ -12,13 +12,11 @@ import (
 )
 
 func TestDSLURLEncodeDecode(t *testing.T) {
-	functions := DefaultHelperFunctions
-
-	encoded, err := functions["url_encode"]("&test\"")
+	encoded, err := DefaultHelperFunctions["url_encode"]("&test\"")
 	require.Nil(t, err, "could not url encode")
 	require.Equal(t, "%26test%22", encoded, "could not get url encoded data")
 
-	decoded, err := functions["url_decode"]("%26test%22")
+	decoded, err := DefaultHelperFunctions["url_decode"]("%26test%22")
 	require.Nil(t, err, "could not url encode")
 	require.Equal(t, "&test\"", decoded, "could not get url decoded data")
 }
@@ -50,11 +48,11 @@ func TestDSLGzipSerialize(t *testing.T) {
 
 func TestDslFunctionSignatures(t *testing.T) {
 	createSignatureError := func(signature string) string {
-		return fmt.Errorf("%w. correct method signature %q", ErrinvalidDslFunction, signature).Error()
+		return fmt.Errorf("%w. correct method signature %q", ErrInvalidDslFunction, signature).Error()
 	}
 
-	toUpperSignatureError := createSignatureError("to_upper(arg1 interface{}) interface{}")
-	removeBadCharsSignatureError := createSignatureError("remove_bad_chars(arg1, arg2 interface{}) interface{}")
+	errToUpperSignature := createSignatureError("to_upper(arg1 interface{}) interface{}")
+	errRemoveBadCharsSignature := createSignatureError("remove_bad_chars(arg1, arg2 interface{}) interface{}")
 
 	testCases := []struct {
 		methodName string
@@ -62,15 +60,15 @@ func TestDslFunctionSignatures(t *testing.T) {
 		expected   interface{}
 		err        string
 	}{
-		{"to_upper", []interface{}{}, nil, toUpperSignatureError},
+		{"to_upper", []interface{}{}, nil, errToUpperSignature},
 		{"to_upper", []interface{}{"a"}, "A", ""},
 		{"toupper", []interface{}{"a"}, "A", ""},
-		{"to_upper", []interface{}{"a", "b", "c"}, nil, toUpperSignatureError},
+		{"to_upper", []interface{}{"a", "b", "c"}, nil, errToUpperSignature},
 
-		{"remove_bad_chars", []interface{}{}, nil, removeBadCharsSignatureError},
-		{"remove_bad_chars", []interface{}{"a"}, nil, removeBadCharsSignatureError},
+		{"remove_bad_chars", []interface{}{}, nil, errRemoveBadCharsSignature},
+		{"remove_bad_chars", []interface{}{"a"}, nil, errRemoveBadCharsSignature},
 		{"remove_bad_chars", []interface{}{"abba baab", "b"}, "aa aa", ""},
-		{"remove_bad_chars", []interface{}{"a", "b", "c"}, nil, removeBadCharsSignatureError},
+		{"remove_bad_chars", []interface{}{"a", "b", "c"}, nil, errRemoveBadCharsSignature},
 	}
 
 	helperFunctions := DefaultHelperFunctions
@@ -123,6 +121,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	len(arg1 interface{}) interface{}
 	line_ends_with(str string, suffix ...string) bool
 	line_starts_with(str string, prefix ...string) bool
+	llm_prompt(arg1 interface{}) interface{}
 	md5(arg1 interface{}) interface{}
 	mmh3(arg1 interface{}) interface{}
 	oct_to_dec(arg1 interface{}) interface{}
