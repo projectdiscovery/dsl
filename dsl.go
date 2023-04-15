@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/Knetic/govaluate"
+	"github.com/Mzack9999/gostruct"
 	"github.com/asaskevich/govalidator"
 	"github.com/hashicorp/go-version"
 	"github.com/kataras/jwt"
@@ -949,6 +950,25 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("llm_prompt", 1, func(args ...interface{}) (interface{}, error) {
 		prompt := args[0].(string)
 		return llm.Query(prompt)
+	}))
+	MustAddFunction(NewWithPositionalArgs("unpack", 2, func(args ...interface{}) (interface{}, error) {
+		format, ok := args[0].(string)
+		if !ok {
+			return nil, errors.New("invalid format")
+		}
+		data, ok := args[1].(string)
+		if !ok {
+			return nil, errors.New("invalid data")
+		}
+		var formatParts []string
+		for idx := range format {
+			formatParts = append(formatParts, string(format[idx]))
+		}
+		unpackedData, err := gostruct.UnPack(formatParts, []byte(data))
+		if len(unpackedData) > 0 {
+			return unpackedData[0], err
+		}
+		return nil, errors.New("no result")
 	}))
 
 	DefaultHelperFunctions = HelperFunctions()
