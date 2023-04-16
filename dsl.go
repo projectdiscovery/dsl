@@ -773,6 +773,9 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 			argStr := toString(args[0])
+			if len(argStr) == 0 {
+				return nil, errors.New("empty string")
+			}
 			start, err := strconv.Atoi(toString(args[1]))
 			if err != nil {
 				return nil, errors.Wrap(err, "invalid start position")
