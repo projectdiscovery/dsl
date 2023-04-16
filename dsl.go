@@ -780,6 +780,9 @@ func init() {
 			if err != nil {
 				return nil, errors.Wrap(err, "invalid start position")
 			}
+			if start > len(argStr) {
+				return nil, errors.Wrap(err, "start position bigger than slice length")
+			}
 			if len(args) == 2 {
 				return argStr[start:], nil
 			}
@@ -789,7 +792,13 @@ func init() {
 				return nil, errors.Wrap(err, "invalid end position")
 			}
 			if end < 0 {
-				end += len(argStr)
+				return nil, errors.Wrap(err, "negative end position")
+			}
+			if end < start {
+				return nil, errors.Wrap(err, "end position before start")
+			}
+			if end > len(argStr) {
+				return nil, errors.Wrap(err, "end position bigger than slice length start")
 			}
 			return argStr[start:end], nil
 		}))
