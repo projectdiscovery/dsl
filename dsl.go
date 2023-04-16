@@ -952,18 +952,22 @@ func init() {
 		return llm.Query(prompt)
 	}))
 	MustAddFunction(NewWithPositionalArgs("unpack", 2, func(args ...interface{}) (interface{}, error) {
+		// format as string (ref: https://docs.python.org/3/library/struct.html#format-characters)
 		format, ok := args[0].(string)
 		if !ok {
 			return nil, errors.New("invalid format")
 		}
+		// binary packed data
 		data, ok := args[1].(string)
 		if !ok {
 			return nil, errors.New("invalid data")
 		}
+		// convert flat format into slice (eg. ">I" => [">","I"])
 		var formatParts []string
 		for idx := range format {
 			formatParts = append(formatParts, string(format[idx]))
 		}
+		// the dsl function supports unpacking only one type at a time
 		unpackedData, err := gostruct.UnPack(formatParts, []byte(data))
 		if len(unpackedData) > 0 {
 			return unpackedData[0], err
