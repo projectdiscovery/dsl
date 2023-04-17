@@ -11,7 +11,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/gologger v1.1.8
 	github.com/projectdiscovery/mapcidr v1.1.1
-	github.com/projectdiscovery/utils v0.0.20-0.20230411082412-f05b9808f98f
+	github.com/projectdiscovery/utils v0.0.20
 	github.com/sashabaranov/go-openai v1.7.0
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/stretchr/testify v1.8.2
@@ -39,7 +39,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0 // indirect
 	golang.org/x/mod v0.9.0 // indirect
-	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/tools v0.7.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
