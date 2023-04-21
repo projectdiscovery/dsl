@@ -152,6 +152,15 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("replace", 3, func(args ...interface{}) (interface{}, error) {
 		return strings.ReplaceAll(toString(args[0]), toString(args[1]), toString(args[2])), nil
 	}))
+	MustAddFunction(NewWithPositionalArgs("replace_at", 5, func(args ...interface{}) (interface{}, error) {
+		to := toString(args[0])
+		idxToStart := args[1].(int64)
+		idxToEnd := args[2].(int64)
+		from := toString(args[3])
+		idxFromStart := args[4].(int64)
+		idxFromEnd := args[5].(int64)
+		return to[:idxToStart] + from[idxFromStart:idxFromEnd] + to[idxToEnd:], nil
+	}))
 	MustAddFunction(NewWithPositionalArgs("replace_regex", 3, func(args ...interface{}) (interface{}, error) {
 		compiled, err := regexp.Compile(toString(args[1]))
 		if err != nil {
