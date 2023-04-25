@@ -1004,13 +1004,13 @@ func init() {
 
 			var arg0 []byte
 			if v, ok := args[0].(string); ok {
-				args[0] = []byte(v)
+				arg0 = []byte(v)
 			}
 
 			c := make([]byte, len(arg0))
 			copy(c, arg0)
 			for _, arg := range args {
-				argx, ok := arg.([]byte)
+				argx, ok := arg.(string)
 				if !ok {
 					return nil, errors.New("invalid argument type")
 				}
