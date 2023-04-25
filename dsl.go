@@ -995,6 +995,35 @@ func init() {
 		}
 		return nil, errors.New("no result")
 	}))
+	MustAddFunction(NewWithSingleSignature("xor",
+		"(args ...interface{}) interface{}",
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) <= 1 {
+				return nil, errors.New("at least two args needed")
+			}
+
+			var arg0 []byte
+			if v, ok := args[0].(string); ok {
+				args[0] = []byte(v)
+			}
+
+			c := make([]byte, len(arg0))
+			copy(c, arg0)
+			for _, arg := range args {
+				argx, ok := arg.([]byte)
+				if !ok {
+					return nil, errors.New("invalid argument type")
+				}
+				if len(argx) != len(arg0) {
+					return nil, errors.New("invalid length")
+				}
+				for i := range argx {
+					c[i] = c[i] ^ argx[i]
+				}
+			}
+
+			return c, nil
+		}))
 
 	DefaultHelperFunctions = HelperFunctions()
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
