@@ -170,6 +170,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	url_decode(arg1 interface{}) interface{}
 	url_encode(arg1 interface{}) interface{}
 	wait_for(seconds uint)
+	xor(args ...interface{}) interface{}
 	zlib(arg1 interface{}) interface{}
 	zlib_decode(arg1 interface{}) interface{}
 `
@@ -276,6 +277,7 @@ func TestDslExpressions(t *testing.T) {
 		`ip_format('127.0.0.1', '5')`:                                          "281472812449793",
 		`ip_format('127.0.1.0', '11')`:                                         "127.0.256",
 		"unpack('>I', '\xac\xd7\t\xd0')":                                       -272646673,
+		"xor('\x01\x02', '\x02\x01')":                                          []uint8([]byte{0x3, 0x3}),
 	}
 
 	testDslExpressions(t, dslExpressions)

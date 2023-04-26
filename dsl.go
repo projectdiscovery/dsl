@@ -152,15 +152,6 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("replace", 3, func(args ...interface{}) (interface{}, error) {
 		return strings.ReplaceAll(toString(args[0]), toString(args[1]), toString(args[2])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("replace_at", 6, func(args ...interface{}) (interface{}, error) {
-		to := toString(args[0])
-		idxToStart := int(args[1].(float64))
-		idxToEnd := int(args[2].(float64))
-		from := toString(args[3])
-		idxFromStart := int(args[4].(float64))
-		idxFromEnd := int(args[5].(float64))
-		return to[:idxToStart] + from[idxFromStart:idxFromEnd] + to[idxToEnd:], nil
-	}))
 	MustAddFunction(NewWithPositionalArgs("replace_regex", 3, func(args ...interface{}) (interface{}, error) {
 		compiled, err := regexp.Compile(toString(args[1]))
 		if err != nil {
@@ -969,7 +960,10 @@ func init() {
 		return formattedIps[0], nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("llm_prompt", 1, func(args ...interface{}) (interface{}, error) {
-		prompt := args[0].(string)
+		prompt, ok := args[0].(string)
+		if !ok {
+			return nil, errors.New("invalid prompt")
+		}
 		return llm.Query(prompt)
 	}))
 	MustAddFunction(NewWithPositionalArgs("unpack", 2, func(args ...interface{}) (interface{}, error) {
@@ -998,31 +992,40 @@ func init() {
 	MustAddFunction(NewWithSingleSignature("xor",
 		"(args ...interface{}) interface{}",
 		func(args ...interface{}) (interface{}, error) {
-			if len(args) <= 1 {
-				return nil, errors.New("at least two args needed")
+			if len(args) < 2 {
+				return nil, errors.New("at least two arguments needed")
 			}
 
-			var arg0 []byte
-			if v, ok := args[0].(string); ok {
-				arg0 = []byte(v)
-			}
-
-			c := make([]byte, len(arg0))
-			copy(c, arg0)
+			n := -1
 			for _, arg := range args {
-				argx, ok := arg.(string)
-				if !ok {
-					return nil, errors.New("invalid argument type")
+				var b []byte
+				switch v := arg.(type) {
+				case string:
+					b = []byte(v)
+				case []byte:
+					b = v
+				default:
+					return nil, fmt.Errorf("invalid argument type %T", arg)
 				}
-				if len(argx) != len(arg0) {
-					return nil, errors.New("invalid length")
-				}
-				for i := range argx {
-					c[i] = c[i] ^ argx[i]
+				if n == -1 {
+					n = len(b)
+				} else if len(b) != n {
+					return nil, errors.New("all arguments must have the same length")
 				}
 			}
 
-			return c, nil
+			result := make([]byte, n)
+			for i := 0; i < n; i++ {
+				for _, arg := range args {
+					b, ok := arg.([]byte)
+					if !ok {
+						b = []byte(arg.(string))
+					}
+					result[i] ^= b[i]
+				}
+			}
+
+			return result, nil
 		}))
 
 	DefaultHelperFunctions = HelperFunctions()
