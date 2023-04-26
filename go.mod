@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
+	github.com/Mzack9999/gostruct v0.0.0-20230415193108-30b70932da81
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/hashicorp/go-version v1.6.0
 	github.com/kataras/jwt v0.1.8
@@ -18,7 +19,6 @@ require (
 )
 
 require (
-	github.com/Mzack9999/gostruct v0.0.0-20230415193108-30b70932da81 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
