@@ -1,5 +1,7 @@
 github.com/Knetic/govaluate v3.0.0+incompatible h1:7o6+MAPhYTCF0+fdvoz1xDedhRb4f6s9Tn1Tt7/WTEg=
 github.com/Knetic/govaluate v3.0.0+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
+github.com/Mzack9999/gostruct v0.0.0-20230415193108-30b70932da81 h1:rwHZjxG8Cx3+FNujiZRuJbYTLHmW8U9+6xIoTseKA/I=
+github.com/Mzack9999/gostruct v0.0.0-20230415193108-30b70932da81/go.mod h1:iXPMmoXMc0ZsSmbbHqhWCWd8w7FkXM7DU2IBf5OS+5g=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=

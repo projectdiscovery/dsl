@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/Knetic/govaluate"
+	"github.com/Mzack9999/gostruct"
 	"github.com/asaskevich/govalidator"
 	"github.com/hashicorp/go-version"
 	"github.com/kataras/jwt"
@@ -772,9 +773,15 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 			argStr := toString(args[0])
+			if len(argStr) == 0 {
+				return nil, errors.New("empty string")
+			}
 			start, err := strconv.Atoi(toString(args[1]))
 			if err != nil {
 				return nil, errors.Wrap(err, "invalid start position")
+			}
+			if start > len(argStr) {
+				return nil, errors.Wrap(err, "start position bigger than slice length")
 			}
 			if len(args) == 2 {
 				return argStr[start:], nil
@@ -785,7 +792,13 @@ func init() {
 				return nil, errors.Wrap(err, "invalid end position")
 			}
 			if end < 0 {
-				end += len(argStr)
+				return nil, errors.Wrap(err, "negative end position")
+			}
+			if end < start {
+				return nil, errors.Wrap(err, "end position before start")
+			}
+			if end > len(argStr) {
+				return nil, errors.Wrap(err, "end position bigger than slice length start")
 			}
 			return argStr[start:end], nil
 		}))
@@ -947,9 +960,73 @@ func init() {
 		return formattedIps[0], nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("llm_prompt", 1, func(args ...interface{}) (interface{}, error) {
-		prompt := args[0].(string)
+		prompt, ok := args[0].(string)
+		if !ok {
+			return nil, errors.New("invalid prompt")
+		}
 		return llm.Query(prompt)
 	}))
+	MustAddFunction(NewWithPositionalArgs("unpack", 2, func(args ...interface{}) (interface{}, error) {
+		// format as string (ref: https://docs.python.org/3/library/struct.html#format-characters)
+		format, ok := args[0].(string)
+		if !ok {
+			return nil, errors.New("invalid format")
+		}
+		// binary packed data
+		data, ok := args[1].(string)
+		if !ok {
+			return nil, errors.New("invalid data")
+		}
+		// convert flat format into slice (eg. ">I" => [">","I"])
+		var formatParts []string
+		for idx := range format {
+			formatParts = append(formatParts, string(format[idx]))
+		}
+		// the dsl function supports unpacking only one type at a time
+		unpackedData, err := gostruct.UnPack(formatParts, []byte(data))
+		if len(unpackedData) > 0 {
+			return unpackedData[0], err
+		}
+		return nil, errors.New("no result")
+	}))
+	MustAddFunction(NewWithSingleSignature("xor",
+		"(args ...interface{}) interface{}",
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) < 2 {
+				return nil, errors.New("at least two arguments needed")
+			}
+
+			n := -1
+			for _, arg := range args {
+				var b []byte
+				switch v := arg.(type) {
+				case string:
+					b = []byte(v)
+				case []byte:
+					b = v
+				default:
+					return nil, fmt.Errorf("invalid argument type %T", arg)
+				}
+				if n == -1 {
+					n = len(b)
+				} else if len(b) != n {
+					return nil, errors.New("all arguments must have the same length")
+				}
+			}
+
+			result := make([]byte, n)
+			for i := 0; i < n; i++ {
+				for _, arg := range args {
+					b, ok := arg.([]byte)
+					if !ok {
+						b = []byte(arg.(string))
+					}
+					result[i] ^= b[i]
+				}
+			}
+
+			return result, nil
+		}))
 
 	DefaultHelperFunctions = HelperFunctions()
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)

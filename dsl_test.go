@@ -166,9 +166,11 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	uniq(input number) string
 	uniq(input string) string
 	unix_time(optionalSeconds uint) float64
+	unpack(arg1, arg2 interface{}) interface{}
 	url_decode(arg1 interface{}) interface{}
 	url_encode(arg1 interface{}) interface{}
 	wait_for(seconds uint)
+	xor(args ...interface{}) interface{}
 	zlib(arg1 interface{}) interface{}
 	zlib_decode(arg1 interface{}) interface{}
 `
@@ -251,7 +253,7 @@ func TestDslExpressions(t *testing.T) {
 		`hmac('sha256', 'test', 'scrt')`:                          "1f1bff5574f18426eb376d6dd5368a754e67a798aa2074644d5e3fd4c90c7a92",
 		`hmac('sha512', 'test', 'scrt')`:                          "1d3fff1dbb7369c1615ffb494813146bea051ce07e5d44bdeca539653ea97656bf9d38db264cddbe6a83ea15139c8f861a7e73e10e43ad4865e852a9ee6de2e9",
 		`substr('xxtestxxx',2)`:                                   "testxxx",
-		`substr('xxtestxxx',2,-2)`:                                "testx",
+		`substr('xxtestxxx',2,4)`:                                 "te",
 		`substr('xxtestxxx',2,6)`:                                 "test",
 		`sort(12453)`:                                             "12345",
 		`sort("a1b2c3d4e5")`:                                      "12345abcde",
@@ -274,6 +276,8 @@ func TestDslExpressions(t *testing.T) {
 		`ip_format('127.0.0.1', '3')`:                                          "0177.0.0.01",
 		`ip_format('127.0.0.1', '5')`:                                          "281472812449793",
 		`ip_format('127.0.1.0', '11')`:                                         "127.0.256",
+		"unpack('>I', '\xac\xd7\t\xd0')":                                       -272646673,
+		"xor('\x01\x02', '\x02\x01')":                                          []uint8([]byte{0x3, 0x3}),
 	}
 
 	testDslExpressions(t, dslExpressions)
