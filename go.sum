@@ -62,8 +62,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/projectdiscovery/blackrock v0.0.0-20230328171319-f24b18d05b64 h1:3oOT3yauepbOp84gz67JQLu/y9uyyIeGakpi+rYw1Cc=
 github.com/projectdiscovery/blackrock v0.0.0-20230328171319-f24b18d05b64/go.mod h1:ANUtjDfaVrqB453bzToU+YB4cUbvBRpLvEwoWIwlTss=
-github.com/projectdiscovery/gologger v1.1.8 h1:CFlCzGlqAhPqWIrAXBt1OVh5jkMs1qgoR/z4xhdzLNE=
-github.com/projectdiscovery/gologger v1.1.8/go.mod h1:bNyVaC1U/NpJtFkJltcesn01NR3K8Hg6RsLVce6yvrw=
+github.com/projectdiscovery/gologger v1.1.9 h1:kzGRs6Oj2gtYrRozTNJsoQw/+2F+++CzFyGNdNQvT3M=
+github.com/projectdiscovery/gologger v1.1.9/go.mod h1:bNyVaC1U/NpJtFkJltcesn01NR3K8Hg6RsLVce6yvrw=
 github.com/projectdiscovery/mapcidr v1.1.1 h1:68Xvw9cKugNeAVxHE3Nl1Ej26nm1taWq6e1WPXpluc0=
 github.com/projectdiscovery/mapcidr v1.1.1/go.mod h1:yyp9ghqmmC0+r5DySgDBXE4cf2QW8SBloVESCteWiAg=
 github.com/projectdiscovery/utils v0.0.26 h1:89t05av9r5gtHBZLCiEkid1rrUjHlwKppz5z5iYzeG0=

@@ -10,7 +10,7 @@ require (
 	github.com/kataras/jwt v0.1.8
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/gologger v1.1.8
+	github.com/projectdiscovery/gologger v1.1.9
 	github.com/projectdiscovery/mapcidr v1.1.1
 	github.com/projectdiscovery/utils v0.0.26
 	github.com/sashabaranov/go-openai v1.9.1
