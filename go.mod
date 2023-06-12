@@ -13,7 +13,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.8
 	github.com/projectdiscovery/mapcidr v1.1.1
 	github.com/projectdiscovery/utils v0.0.26
-	github.com/sashabaranov/go-openai v1.9.1
+	github.com/sashabaranov/go-openai v1.10.1
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/stretchr/testify v1.8.2
 )
