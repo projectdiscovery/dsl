@@ -10,7 +10,7 @@ require (
 	github.com/kataras/jwt v0.1.8
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/gologger v1.1.8
+	github.com/projectdiscovery/gologger v1.1.10
 	github.com/projectdiscovery/mapcidr v1.1.1
 	github.com/projectdiscovery/utils v0.0.26
 	github.com/sashabaranov/go-openai v1.9.1
@@ -25,6 +25,7 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible // indirect
 	github.com/microcosm-cc/bluemonday v1.0.23 // indirect
 	github.com/miekg/dns v1.1.54 // indirect
