@@ -1027,6 +1027,15 @@ func init() {
 
 			return result, nil
 		}))
+	MustAddFunction(NewWithSingleSignature("public_ip",
+		"() string",
+		func(args ...interface{}) (interface{}, error) {
+			publicIP := GetPublicIP()
+			if publicIP == "" {
+				return nil, errors.New("could not retrieve public ip")
+			}
+			return publicIP, nil
+		}))
 
 	DefaultHelperFunctions = HelperFunctions()
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
