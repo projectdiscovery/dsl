@@ -126,6 +126,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	mmh3(arg1 interface{}) interface{}
 	oct_to_dec(arg1 interface{}) interface{}
 	print_debug(args ...interface{})
+	public_ip() string
 	rand_base(length uint, optionalCharSet string) string
 	rand_char(optionalCharSet string) string
 	rand_int(optionalMin, optionalMax uint) int
