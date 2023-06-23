@@ -122,6 +122,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	hmac(arg1, arg2, arg3 interface{}) interface{}
 	html_escape(arg1 interface{}) interface{}
 	html_unescape(arg1 interface{}) interface{}
+	index(arg1, arg2 interface{}) interface{}
 	ip_format(arg1, arg2 interface{}) interface{}
 	join(separator string, elements ...interface{}) string
 	join(separator string, elements []interface{}) string
