@@ -21,6 +21,7 @@ import (
 	"io"
 	"math"
 	"net/url"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -76,8 +77,26 @@ func MustAddFunction(function dslFunction) {
 }
 
 func init() {
+	MustAddFunction(NewWithPositionalArgs("index", 2, func(args ...interface{}) (interface{}, error) {
+		index := int(args[1].(float64))
+		if reflect.TypeOf(args[0]).Kind() == reflect.Slice {
+			sA := args[0].([]string)
+			l := len(sA)
+			return sA[(l+index)%l], nil
+		} else {
+			sA := toString(args[0])
+			l := len(sA)
+			return string(sA[(l+index)%l]), nil
+		}
+	}))
+
 	MustAddFunction(NewWithPositionalArgs("len", 1, func(args ...interface{}) (interface{}, error) {
-		length := len(toString(args[0]))
+		var length int
+		if reflect.ValueOf(args[0]).Kind() == reflect.Slice {
+			length = reflect.ValueOf(args[0]).Len()
+		} else {
+			length = len(toString(args[0]))
+		}
 		return float64(length), nil
 	}))
 
