@@ -11,6 +11,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestIndex(t *testing.T) {
+	index, err := govaluate.NewEvaluableExpressionWithFunctions("index(split(url, '.', -1), 1) == 'example'", DefaultHelperFunctions)
+	require.Nil(t, err, "could not compile index")
+
+	result, err := index.Evaluate(map[string]interface{}{"url": "https://www.example.com"})
+	require.Nil(t, err, "could not evaluate index")
+	require.Equal(t, true, result, "could not get index data")
+}
+
 func TestDSLURLEncodeDecode(t *testing.T) {
 	encoded, err := DefaultHelperFunctions["url_encode"]("&test\"")
 	require.Nil(t, err, "could not url encode")
@@ -227,6 +236,7 @@ func TestDslExpressions(t *testing.T) {
 		`hex_decode("6161")`:                                      "aa",
 		`len("Hello")`:                                            float64(5),
 		`len(1234)`:                                               float64(4),
+		`len(split("1.2.3.4",'.',-1))`:                            float64(4),
 		`contains("Hello", "lo")`:                                 true,
 		`starts_with("Hello", "He")`:                              true,
 		`ends_with("Hello", "lo")`:                                true,
