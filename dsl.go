@@ -78,23 +78,39 @@ func MustAddFunction(function dslFunction) {
 
 func init() {
 	MustAddFunction(NewWithPositionalArgs("index", 2, func(args ...interface{}) (interface{}, error) {
-		index := int(args[1].(float64))
+		floatValue, err := strconv.ParseFloat(toString(args[1]), 64)
+		if err != nil {
+			return nil, err
+		}
+		index := int(floatValue)
+		// If the first argument is a slice, we index into it
 		if reflect.TypeOf(args[0]).Kind() == reflect.Slice {
-			sA := args[0].([]string)
-			l := len(sA)
-			return sA[(l+index)%l], nil
+			slice := args[0].([]string)
+			l := len(slice)
+			if index < 0 || index >= l {
+				return nil, fmt.Errorf("index out of range for %v: %d", args[0], index)
+			}
+			return slice[index], nil
 		} else {
-			sA := toString(args[0])
-			l := len(sA)
-			return string(sA[(l+index)%l]), nil
+			// Otherwise, we index into the string
+			str := toString(args[0])
+			l := len(str)
+			if index < 0 || index >= l {
+				return nil, fmt.Errorf("index out of range for %v: %d", args[0], index)
+			}
+			return string(str[index]), nil
 		}
 	}))
 
 	MustAddFunction(NewWithPositionalArgs("len", 1, func(args ...interface{}) (interface{}, error) {
 		var length int
-		if reflect.ValueOf(args[0]).Kind() == reflect.Slice {
-			length = reflect.ValueOf(args[0]).Len()
-		} else {
+		value := reflect.ValueOf(args[0])
+		switch value.Kind() {
+		case reflect.Slice:
+			length = value.Len()
+		case reflect.Map:
+			length = value.Len()
+		default:
 			length = len(toString(args[0]))
 		}
 		return float64(length), nil
