@@ -78,25 +78,24 @@ func MustAddFunction(function dslFunction) {
 
 func init() {
 	MustAddFunction(NewWithPositionalArgs("index", 2, func(args ...interface{}) (interface{}, error) {
-		floatValue, err := strconv.ParseFloat(toString(args[1]), 64)
+		index, err := strconv.ParseInt(toString(args[1]), 10, 64)
 		if err != nil {
 			return nil, err
 		}
-		index := int(floatValue)
 		// If the first argument is a slice, we index into it
-		if reflect.TypeOf(args[0]).Kind() == reflect.Slice {
-			slice := args[0].([]string)
-			l := len(slice)
+		switch v := args[0].(type) {
+		case []string:
+			l := int64(len(v))
 			if index < 0 || index >= l {
-				return nil, fmt.Errorf("index out of range for %v: %d", args[0], index)
+				return nil, fmt.Errorf("index out of range for %v: %d", v, index)
 			}
-			return slice[index], nil
-		} else {
+			return v[index], nil
+		default:
 			// Otherwise, we index into the string
-			str := toString(args[0])
-			l := len(str)
+			str := toString(v)
+			l := int64(len(str))
 			if index < 0 || index >= l {
-				return nil, fmt.Errorf("index out of range for %v: %d", args[0], index)
+				return nil, fmt.Errorf("index out of range for %v: %d", v, index)
 			}
 			return string(str[index]), nil
 		}
