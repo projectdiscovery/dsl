@@ -77,6 +77,7 @@ func MustAddFunction(function dslFunction) {
 }
 
 func init() {
+	// note: index helper is zero based
 	MustAddFunction(NewWithPositionalArgs("index", 2, func(args ...interface{}) (interface{}, error) {
 		index, err := strconv.ParseInt(toString(args[1]), 10, 64)
 		if err != nil {
