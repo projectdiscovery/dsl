@@ -21,6 +21,7 @@ import (
 	"io"
 	"math"
 	"net/url"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -76,8 +77,42 @@ func MustAddFunction(function dslFunction) {
 }
 
 func init() {
+	// note: index helper is zero based
+	MustAddFunction(NewWithPositionalArgs("index", 2, func(args ...interface{}) (interface{}, error) {
+		index, err := strconv.ParseInt(toString(args[1]), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		// If the first argument is a slice, we index into it
+		switch v := args[0].(type) {
+		case []string:
+			l := int64(len(v))
+			if index < 0 || index >= l {
+				return nil, fmt.Errorf("index out of range for %v: %d", v, index)
+			}
+			return v[index], nil
+		default:
+			// Otherwise, we index into the string
+			str := toString(v)
+			l := int64(len(str))
+			if index < 0 || index >= l {
+				return nil, fmt.Errorf("index out of range for %v: %d", v, index)
+			}
+			return string(str[index]), nil
+		}
+	}))
+
 	MustAddFunction(NewWithPositionalArgs("len", 1, func(args ...interface{}) (interface{}, error) {
-		length := len(toString(args[0]))
+		var length int
+		value := reflect.ValueOf(args[0])
+		switch value.Kind() {
+		case reflect.Slice:
+			length = value.Len()
+		case reflect.Map:
+			length = value.Len()
+		default:
+			length = len(toString(args[0]))
+		}
 		return float64(length), nil
 	}))
 
