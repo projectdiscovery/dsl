@@ -126,6 +126,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	index(arg1, arg2 interface{}) interface{}
 	inflate(arg1 interface{}) interface{}
 	ip_format(arg1, arg2 interface{}) interface{}
+	jarm(arg1 interface{}) interface{}
 	join(separator string, elements ...interface{}) string
 	join(separator string, elements []interface{}) string
 	json_minify(arg1 interface{}) interface{}

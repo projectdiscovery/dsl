@@ -21,6 +21,7 @@ import (
 	"html"
 	"io"
 	"math"
+	"net"
 	"net/url"
 	"reflect"
 	"regexp"
@@ -41,6 +42,7 @@ import (
 	"github.com/projectdiscovery/dsl/randomip"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/mapcidr"
+	jarm "github.com/projectdiscovery/utils/crypto/jarm"
 	maputils "github.com/projectdiscovery/utils/maps"
 	randint "github.com/projectdiscovery/utils/rand"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -1098,6 +1100,22 @@ func init() {
 			}
 			return publicIP, nil
 		}))
+
+	MustAddFunction(NewWithPositionalArgs("jarm", 1, func(args ...interface{}) (interface{}, error) {
+		host, ok := args[0].(string)
+		if !ok {
+			return nil, errors.New("invalid target")
+		}
+		hostname, portRaw, err := net.SplitHostPort(host)
+		if err != nil {
+			return nil, err
+		}
+		port, err := strconv.Atoi(portRaw)
+		if err != nil {
+			return nil, err
+		}
+		return jarm.HashWithDialer(nil, hostname, port, 10)
+	}))
 
 	DefaultHelperFunctions = HelperFunctions()
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
