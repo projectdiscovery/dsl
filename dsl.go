@@ -57,6 +57,10 @@ var (
 	DefaultHelperFunctions map[string]govaluate.ExpressionFunction
 
 	funcSignatureRegex = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
+
+	// ErrParsingArg is error when parsing value of argument
+	// Use With Caution: Nuclei ignores this error in extractors(ref: https://github.com/projectdiscovery/nuclei/issues/3950)
+	ErrParsingArg = errors.New("error parsing argument value")
 )
 
 var PrintDebugCallback func(args ...interface{}) error
@@ -771,7 +775,7 @@ func init() {
 
 			firstParsed, parseErr := version.NewVersion(toString(args[0]))
 			if parseErr != nil {
-				return nil, parseErr
+				return nil, ErrParsingArg
 			}
 
 			var versionConstraints []string
