@@ -36,13 +36,13 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/kataras/jwt"
 	"github.com/logrusorgru/aurora"
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/dsl/deserialization"
 	"github.com/projectdiscovery/dsl/llm"
 	"github.com/projectdiscovery/dsl/randomip"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/mapcidr"
 	jarm "github.com/projectdiscovery/utils/crypto/jarm"
+	errors "github.com/projectdiscovery/utils/errors"
 	maputils "github.com/projectdiscovery/utils/maps"
 	randint "github.com/projectdiscovery/utils/rand"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -775,7 +775,7 @@ func init() {
 
 			firstParsed, parseErr := version.NewVersion(toString(args[0]))
 			if parseErr != nil {
-				return nil, ErrParsingArg
+				return nil, errors.NewWithErr(ErrParsingArg).Wrap(parseErr)
 			}
 
 			var versionConstraints []string
@@ -846,10 +846,10 @@ func init() {
 			}
 			start, err := strconv.Atoi(toString(args[1]))
 			if err != nil {
-				return nil, errors.Wrap(err, "invalid start position")
+				return nil, errors.NewWithErr(err).Msgf("invalid start position")
 			}
 			if start > len(argStr) {
-				return nil, errors.Wrap(err, "start position bigger than slice length")
+				return nil, errors.NewWithErr(err).Msgf("start position bigger than slice length")
 			}
 			if len(args) == 2 {
 				return argStr[start:], nil
@@ -857,16 +857,16 @@ func init() {
 
 			end, err := strconv.Atoi(toString(args[2]))
 			if err != nil {
-				return nil, errors.Wrap(err, "invalid end position")
+				return nil, errors.NewWithErr(err).Msgf("invalid end position")
 			}
 			if end < 0 {
-				return nil, errors.Wrap(err, "negative end position")
+				return nil, errors.NewWithErr(err).Msgf("negative end position")
 			}
 			if end < start {
-				return nil, errors.Wrap(err, "end position before start")
+				return nil, errors.NewWithErr(err).Msgf("end position before start")
 			}
 			if end > len(argStr) {
-				return nil, errors.Wrap(err, "end position bigger than slice length start")
+				return nil, errors.NewWithErr(err).Msgf("end position bigger than slice length start")
 			}
 			return argStr[start:end], nil
 		}))
