@@ -5,12 +5,12 @@ import (
 	"sync"
 
 	"github.com/Knetic/govaluate"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 var (
 	defaultEngine *Engine
-	RegexStore    = make(map[string]*regexp.Regexp)
-	regexmux      sync.RWMutex
+	RegexStore    = &mapsutil.SyncLockMap[string, *regexp.Regexp]{Map: make(mapsutil.Map[string, *regexp.Regexp])}
 )
 
 type Engine struct {
@@ -62,17 +62,15 @@ func EvalExpr(expr string, vars map[string]interface{}) (interface{}, error) {
 }
 
 func Regex(regxp string) (*regexp.Regexp, error) {
-	if compiled, ok := RegexStore[regxp]; ok {
+	if compiled, ok := RegexStore.Get(regxp); ok {
 		return compiled, nil
 	}
 
-	regexmux.Lock()
-	defer regexmux.Unlock()
 	compiled, err := regexp.Compile(regxp)
 	if err != nil {
 		return nil, err
 	}
-	RegexStore[regxp] = compiled
+	RegexStore.Set(regxp, compiled)
 
 	return compiled, nil
 }
