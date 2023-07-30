@@ -70,7 +70,7 @@ func Regex(regxp string) (*regexp.Regexp, error) {
 	if err != nil {
 		return nil, err
 	}
-	RegexStore.Set(regxp, compiled)
+	_ = RegexStore.Set(regxp, compiled)
 
 	return compiled, nil
 }

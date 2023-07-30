@@ -62,7 +62,7 @@ func (d dslFunction) Exec(args ...interface{}) (interface{}, error) {
 	result, err := d.ExpressionFunction(args...)
 
 	if d.IsCacheable {
-		resultCache.Set(functionHash, result)
+		_ = resultCache.Set(functionHash, result)
 	}
 
 	return result, err

@@ -9,6 +9,7 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 )
 
 func TestIndex(t *testing.T) {
@@ -469,8 +470,36 @@ func TestRandIntDslExpressions(t *testing.T) {
 	}
 }
 
-func evaluateExpression(t *testing.T, dslExpression string) interface{} {
-	compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, DefaultHelperFunctions)
+func TestCachingLayer(t *testing.T) {
+	var (
+		callCount      int
+		expectedResult = "static value"
+		cacheableFunc  = dslFunction{
+			IsCacheable:  true,
+			Name:         "cacheable_func",
+			NumberOfArgs: 0,
+			Signatures:   nil,
+			ExpressionFunction: func(args ...interface{}) (interface{}, error) {
+				time.Sleep(time.Second)
+				callCount++
+				return expectedResult, nil
+			},
+		}
+	)
+
+	for i := 0; i < 100; i++ {
+		result := evaluateExpression(t, "cacheable_func()", cacheableFunc)
+		require.Equal(t, expectedResult, result)
+	}
+	require.Equal(t, 1, callCount)
+}
+
+func evaluateExpression(t *testing.T, dslExpression string, functions ...dslFunction) interface{} {
+	helperFunctions := maps.Clone(DefaultHelperFunctions)
+	for _, function := range functions {
+		helperFunctions[function.Name] = function.Exec
+	}
+	compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, helperFunctions)
 	require.NoError(t, err, "Error while compiling the %q expression", dslExpression)
 
 	actualResult, err := compiledExpression.Evaluate(make(map[string]interface{}))
