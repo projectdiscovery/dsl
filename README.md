@@ -264,6 +264,10 @@ variables:
 }
 ```
 
+### Caching layer
+
+DSL helpers that given the same input have deterministic output and are I/O intensive, should set the `Cacheable` property to `true`. This avoids to invoke the function multiple times and return always the same result.
+
 ### Thanks
 
 Knetic/govaluate - For providing a powerful expression evaluation package.
