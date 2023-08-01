@@ -50,18 +50,17 @@ func (d dslFunction) Exec(args ...interface{}) (interface{}, error) {
 		}
 	}
 
-	// result cache check
-	var functionHash string
-	if d.IsCacheable {
-		functionHash = d.hash()
-		if result, err := resultCache.Get(functionHash); err == nil {
-			return result, nil
-		}
+	if !d.IsCacheable {
+		return d.ExpressionFunction(args...)
+	}
+
+	functionHash := d.hash()
+	if result, err := resultCache.Get(functionHash); err == nil {
+		return result, nil
 	}
 
 	result, err := d.ExpressionFunction(args...)
-
-	if d.IsCacheable {
+	if err == nil {
 		_ = resultCache.Set(functionHash, result)
 	}
 
