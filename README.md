@@ -1,8 +1,8 @@
 # DSL
 DSL ease the creation of expressions by providing a set of built-in helper functions.
 
-### what is DSL?
-DSL is a library allows to create and evaluate expressions. You can define expressions to compare, filter, or transform data, and then evaluate them against a set of data.
+### What is DSL?
+DSL is a library that allows to create and evaluate expressions. You can define expressions to compare, filter, or transform data, and then evaluate them against a set of data.
 
 ### Example
 ```go
@@ -37,12 +37,12 @@ func main() {
 	for matcherName, expression := range expressions {
 		compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.DefaultHelperFunctions)
 		if err != nil {
-			fmt.Printf("Fialed to compile expresion: %v\n", expression)
+			fmt.Printf("Failed to compile expresion: %v\n", expression)
 		}
 
 		result, err := compiledExpression.Evaluate(data)
 		if err != nil {
-			fmt.Printf("Fialed to evaluate expresion: %v\n", expression)
+			fmt.Printf("Failed to evaluate expresion: %v\n", expression)
 		}
 
 		if result == true {
