@@ -44,6 +44,7 @@ import (
 	"github.com/projectdiscovery/mapcidr"
 	jarm "github.com/projectdiscovery/utils/crypto/jarm"
 	errors "github.com/projectdiscovery/utils/errors"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	maputils "github.com/projectdiscovery/utils/maps"
 	randint "github.com/projectdiscovery/utils/rand"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -818,37 +819,57 @@ func init() {
 			result := constraint.Check(firstParsed)
 			return result, nil
 		}))
-	MustAddFunction(NewWithPositionalArgs("pads", 3, false, func(args ...interface{}) (interface{}, error) {
-		bLen := int(args[2].(float64))
-		bByte := []byte(args[1].(string))
-		bData := []byte(args[0].(string))
+	MustAddFunction(NewWithPositionalArgs("padding", 3, false, func(args ...interface{}) (interface{}, error) {
+		// padding('Test String','A',50) // will pad "Test String" up to 50 characters with "A" as padding byte.
+		bLen := 0
+		switch value := args[2].(type) {
+		case float64:
+			bLen = int(value)
+		case int:
+			bLen = value
+		default:
+			strLen := toString(args[2])
+			floatVal, err := strconv.ParseFloat(strLen, 64)
+			if err != nil {
+				return nil, err
+			}
+			bLen = int(floatVal)
+		}
+		if bLen == 0 {
+			return nil, errorutil.New("invalid padding length")
+		}
+		bByte := []byte(toString(args[1]))
+		if len(bByte) == 0 {
+			return nil, errorutil.New("invalid padding byte")
+		}
+		bData := []byte(toString(args[0]))
 		dataLen := len(bData)
-	    if dataLen == 0 {
-		// If the initial string is empty, simply create a padded array with the specified length
+		if dataLen == 0 {
+			// If the initial string is empty, simply create a padded array with the specified length
 			paddedData := make([]byte, bLen)
 			for i := 0; i < bLen; i++ {
 				paddedData[i] = bByte[i%len(bByte)]
 			}
-       		return toString(paddedData), nil
+			return toString(paddedData), nil
 		}
 
 		// Calculate the number of bytes needed for padding
 		paddingLen := (bLen - (dataLen % bLen)) % bLen
-	
+
 		// Create a new byte array with the desired length
 		paddedData := make([]byte, dataLen+paddingLen)
-	
+
 		// Copy the original data into the padded array
 		copy(paddedData, bData)
-	
+
 		// Add padding bytes with the specified padding byte
 		for i := dataLen; i < len(paddedData); i++ {
 			paddedData[i] = bByte[i%len(bByte)]
 		}
-	
+
 		return toString(paddedData), nil
-	
-			}))
+
+	}))
 
 	MustAddFunction(NewWithSingleSignature("print_debug",
 		"(args ...interface{})",
