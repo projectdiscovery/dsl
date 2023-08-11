@@ -139,6 +139,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	md5(arg1 interface{}) interface{}
 	mmh3(arg1 interface{}) interface{}
 	oct_to_dec(arg1 interface{}) interface{}
+	padding(arg1, arg2, arg3 interface{}) interface{}
 	print_debug(args ...interface{})
 	public_ip() string
 	rand_base(length uint, optionalCharSet string) string
@@ -253,6 +254,7 @@ func TestDslExpressions(t *testing.T) {
 		"line_ends_with('Hii\nHello', 'ii')":                      true, // back quotes do not support escape sequences
 		`regex("H([a-z]+)o", "Hello")`:                            true,
 		`wait_for(1)`:                                             nil,
+		`padding("A","b",3)`:                                      "Abb",
 		`print_debug(1+2, "Hello")`:                               nil,
 		`to_number('4')`:                                          float64(4),
 		`to_string(4)`:                                            "4",
