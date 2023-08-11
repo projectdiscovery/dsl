@@ -1179,6 +1179,7 @@ func NewWithPositionalArgs(name string, numberOfArgs int, cacheable bool, expr g
 		Name:               name,
 		NumberOfArgs:       numberOfArgs,
 		ExpressionFunction: expr,
+		IsCacheable:        cacheable,
 	}
 	return function
 }
