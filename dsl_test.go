@@ -253,7 +253,7 @@ func TestDslExpressions(t *testing.T) {
 		"line_ends_with('Hii\nHello', 'ii')":                      true, // back quotes do not support escape sequences
 		`regex("H([a-z]+)o", "Hello")`:                            true,
 		`wait_for(1)`:                                             nil,
-		`padding("A","A",3)`:                                      "AAA",
+		`padding("A","b",3)`:                                      "Abb",
 		`print_debug(1+2, "Hello")`:                               nil,
 		`to_number('4')`:                                          float64(4),
 		`to_string(4)`:                                            "4",

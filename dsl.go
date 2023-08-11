@@ -844,6 +844,9 @@ func init() {
 		}
 		bData := []byte(toString(args[0]))
 		dataLen := len(bData)
+		if dataLen >= bLen {
+			return toString(bData), nil // Note: if given string is longer than the desired length, it will not be truncated
+		}
 		if dataLen == 0 {
 			// If the initial string is empty, simply create a padded array with the specified length
 			paddedData := make([]byte, bLen)
