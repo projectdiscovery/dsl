@@ -818,6 +818,38 @@ func init() {
 			result := constraint.Check(firstParsed)
 			return result, nil
 		}))
+	MustAddFunction(NewWithPositionalArgs("pads", 3, false, func(args ...interface{}) (interface{}, error) {
+		bLen := int(args[2].(float64))
+		bByte := []byte(args[1].(string))
+		bData := []byte(args[0].(string))
+		dataLen := len(bData)
+	    if dataLen == 0 {
+		// If the initial string is empty, simply create a padded array with the specified length
+			paddedData := make([]byte, bLen)
+			for i := 0; i < bLen; i++ {
+				paddedData[i] = bByte[i%len(bByte)]
+			}
+       		return toString(paddedData), nil
+		}
+
+		// Calculate the number of bytes needed for padding
+		paddingLen := (bLen - (dataLen % bLen)) % bLen
+	
+		// Create a new byte array with the desired length
+		paddedData := make([]byte, dataLen+paddingLen)
+	
+		// Copy the original data into the padded array
+		copy(paddedData, bData)
+	
+		// Add padding bytes with the specified padding byte
+		for i := dataLen; i < len(paddedData); i++ {
+			paddedData[i] = bByte[i%len(bByte)]
+		}
+	
+		return toString(paddedData), nil
+	
+			}))
+
 	MustAddFunction(NewWithSingleSignature("print_debug",
 		"(args ...interface{})",
 		false,
