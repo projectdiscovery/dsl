@@ -936,7 +936,7 @@ func init() {
 				return nil, errors.NewWithErr(err).Msgf("invalid start position")
 			}
 			if start > len(argStr) {
-				return nil, errors.NewWithErr(err).Msgf("start position bigger than slice length")
+				return nil, errors.New("start position bigger than slice length")
 			}
 			if len(args) == 2 {
 				return argStr[start:], nil
@@ -944,16 +944,16 @@ func init() {
 
 			end, err := strconv.Atoi(toString(args[2]))
 			if err != nil {
-				return nil, errors.NewWithErr(err).Msgf("invalid end position")
+				return nil, errors.New("invalid end position")
 			}
 			if end < 0 {
-				return nil, errors.NewWithErr(err).Msgf("negative end position")
+				return nil, errors.New("negative end position")
 			}
 			if end < start {
-				return nil, errors.NewWithErr(err).Msgf("end position before start")
+				return nil, errors.New("end position before start")
 			}
 			if end > len(argStr) {
-				return nil, errors.NewWithErr(err).Msgf("end position bigger than slice length start")
+				return nil, errors.New("end position bigger than slice length start")
 			}
 			return argStr[start:end], nil
 		}))
