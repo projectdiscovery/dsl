@@ -47,6 +47,7 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	maputils "github.com/projectdiscovery/utils/maps"
 	randint "github.com/projectdiscovery/utils/rand"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/spaolacci/murmur3"
 )
@@ -1210,6 +1211,41 @@ func init() {
 		}
 		return jarm.HashWithDialer(nil, hostname, port, 10)
 	}))
+	MustAddFunction(NewWithMultipleSignatures("extract_regex",
+		[]string{
+			"(regex string, data string, group int) interface{}",
+		},
+		false,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) < 2 {
+				return nil, errors.New("at least two arguments needed")
+			}
+			compiled, err := regexp.Compile(toString(args[0]))
+			if err != nil {
+				return nil, err
+			}
+
+			var results []string
+			corpus := toString(args[1])
+			if len(args) == 3 {
+				v, ok := args[2].(float64)
+				if !ok {
+					return nil, fmt.Errorf("invalid group number %v", v)
+				}
+				group := int(v)
+				groupPlusOne := group + 1
+				matches := compiled.FindAllStringSubmatch(corpus, -1)
+				for _, match := range matches {
+					if len(match) < groupPlusOne {
+						continue
+					}
+					matchString := match[group]
+					results = append(results, matchString)
+				}
+				return sliceutil.Dedupe(results), nil
+			}
+			return compiled.FindAllString(corpus, -1), nil
+		}))
 
 	DefaultHelperFunctions = HelperFunctions()
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
