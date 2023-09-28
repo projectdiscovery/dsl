@@ -115,7 +115,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	ends_with(str string, suffix ...string) bool
 	equals_any(arg1, arg2 interface{}) interface{}
 	generate_java_gadget(arg1, arg2, arg3 interface{}) interface{}
-	generate_jwt(jsonString, optionalAlgorithm, optionalSignature string, optionalMaxAgeUnix interface{}) string
+	generate_jwt(jsonString, algorithm, optionalSignature string, optionalMaxAgeUnix interface{}) string
 	gzip(arg1 interface{}) interface{}
 	gzip_decode(arg1 interface{}) interface{}
 	hex_decode(arg1 interface{}) interface{}

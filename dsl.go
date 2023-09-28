@@ -989,10 +989,10 @@ func init() {
 		return data, nil
 	}))
 	MustAddFunction(NewWithSingleSignature("generate_jwt",
-		"(jsonString, optionalAlgorithm, optionalSignature string, optionalMaxAgeUnix interface{}) string",
+		"(jsonString, algorithm, optionalSignature string, optionalMaxAgeUnix interface{}) string",
 		false,
 		func(args ...interface{}) (interface{}, error) {
-			var optionalAlgorithm string
+			var algorithm string
 			var optionalSignature []byte
 			var optionalMaxAgeUnix time.Time
 
@@ -1001,7 +1001,7 @@ func init() {
 
 			argSize := len(args)
 
-			if argSize < 1 || argSize > 4 {
+			if argSize < 2 || argSize > 4 {
 				return nil, ErrInvalidDslFunction
 			}
 			jsonString := args[0].(string)
@@ -1011,49 +1011,46 @@ func init() {
 				return nil, err
 			}
 
-			var algorithm jwt.Alg
+			var jwtAlgorithm jwt.Alg
+			alg := args[1].(string)
+			algorithm = strings.ToUpper(alg)
 
-			if argSize > 1 {
-				alg := args[1].(string)
-				optionalAlgorithm = strings.ToUpper(alg)
+			switch algorithm {
+			case "":
+				jwtAlgorithm = jwt.NONE
+			case "HS256":
+				jwtAlgorithm = jwt.HS256
+			case "HS384":
+				jwtAlgorithm = jwt.HS384
+			case "HS512":
+				jwtAlgorithm = jwt.HS512
+			case "RS256":
+				jwtAlgorithm = jwt.RS256
+			case "RS384":
+				jwtAlgorithm = jwt.RS384
+			case "RS512":
+				jwtAlgorithm = jwt.RS512
+			case "PS256":
+				jwtAlgorithm = jwt.PS256
+			case "PS384":
+				jwtAlgorithm = jwt.PS384
+			case "PS512":
+				jwtAlgorithm = jwt.PS512
+			case "ES256":
+				jwtAlgorithm = jwt.ES256
+			case "ES384":
+				jwtAlgorithm = jwt.ES384
+			case "ES512":
+				jwtAlgorithm = jwt.ES512
+			case "EDDSA":
+				jwtAlgorithm = jwt.EdDSA
+			}
 
-				switch optionalAlgorithm {
-				case "":
-					algorithm = jwt.NONE
-				case "HS256":
-					algorithm = jwt.HS256
-				case "HS384":
-					algorithm = jwt.HS384
-				case "HS512":
-					algorithm = jwt.HS512
-				case "RS256":
-					algorithm = jwt.RS256
-				case "RS384":
-					algorithm = jwt.RS384
-				case "RS512":
-					algorithm = jwt.RS512
-				case "PS256":
-					algorithm = jwt.PS256
-				case "PS384":
-					algorithm = jwt.PS384
-				case "PS512":
-					algorithm = jwt.PS512
-				case "ES256":
-					algorithm = jwt.ES256
-				case "ES384":
-					algorithm = jwt.ES384
-				case "ES512":
-					algorithm = jwt.ES512
-				case "EDDSA":
-					algorithm = jwt.EdDSA
-				}
-
-				if isjwtAlgorithmNone(alg) {
-					algorithm = &algNONE{algValue: alg}
-				}
-				if algorithm == nil {
-					return nil, fmt.Errorf("invalid algorithm: %s", optionalAlgorithm)
-				}
+			if isjwtAlgorithmNone(alg) {
+				jwtAlgorithm = &algNONE{algValue: alg}
+			}
+			if jwtAlgorithm == nil {
+				return nil, fmt.Errorf("invalid algorithm: %s", algorithm)
 			}
 
 			if argSize > 2 {
@@ -1074,7 +1071,7 @@ func init() {
 				signOpts = append(signOpts, jwt.MaxAge(duration))
 			}
 
-			return jwt.Sign(algorithm, optionalSignature, jsonData, signOpts...)
+			return jwt.Sign(jwtAlgorithm, optionalSignature, jsonData, signOpts...)
 		}))
 	MustAddFunction(NewWithPositionalArgs("json_minify", 1, false, func(args ...interface{}) (interface{}, error) {
 		var data map[string]interface{}
