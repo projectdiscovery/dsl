@@ -1,4 +1,4 @@
-name: 🤖 dep-auto-merge
+name: 🤖 dep auto merge
 
 on:
   pull_request:
@@ -14,6 +14,7 @@ permissions:
 jobs:
   automerge:
     runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v3
         with:
