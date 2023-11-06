@@ -11,7 +11,7 @@ require (
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/gologger v1.1.11
-	github.com/projectdiscovery/gostruct v0.0.1
+	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/mapcidr v1.1.14
 	github.com/projectdiscovery/utils v0.0.62
 	github.com/sashabaranov/go-openai v1.14.2
