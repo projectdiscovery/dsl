@@ -11,6 +11,7 @@ import (
 type dslFunction struct {
 	IsCacheable bool
 	Name        string
+	Detail      string
 	// if numberOfArgs is defined the signature is automatically generated
 	NumberOfArgs       int
 	Signatures         []string
