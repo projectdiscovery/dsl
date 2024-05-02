@@ -2,8 +2,6 @@ module github.com/projectdiscovery/dsl
 
 go 1.21
 
-toolchain go1.21.3
-
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
