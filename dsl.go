@@ -64,8 +64,9 @@ var (
 	// Use With Caution: Nuclei ignores this error in extractors(ref: https://github.com/projectdiscovery/nuclei/issues/3950)
 	ErrParsingArg = errors.New("error parsing argument value")
 
-	DefaultCacheSize                                   = 250
-	resultCache      gcache.Cache[string, interface{}] = gcache.New[string, interface{}](DefaultCacheSize).Build()
+	DefaultMaxDecompressionSize                                   = int64(10 * 1024 * 1024) // 10MB
+	DefaultCacheSize                                              = 250
+	resultCache                 gcache.Cache[string, interface{}] = gcache.New[string, interface{}](DefaultCacheSize).Build()
 )
 
 var PrintDebugCallback func(args ...interface{}) error
@@ -248,7 +249,9 @@ func init() {
 		if err != nil {
 			return "", err
 		}
-		data, err := io.ReadAll(reader)
+		limitReader := io.LimitReader(reader, DefaultMaxDecompressionSize)
+
+		data, err := io.ReadAll(limitReader)
 		if err != nil {
 			_ = reader.Close()
 			return "", err
@@ -272,7 +275,9 @@ func init() {
 		if err != nil {
 			return "", err
 		}
-		data, err := io.ReadAll(reader)
+		limitReader := io.LimitReader(reader, DefaultMaxDecompressionSize)
+
+		data, err := io.ReadAll(limitReader)
 		if err != nil {
 			_ = reader.Close()
 			return "", err
@@ -297,7 +302,9 @@ func init() {
 	}))
 	MustAddFunction(NewWithPositionalArgs("inflate", 1, false, func(args ...interface{}) (interface{}, error) {
 		reader := flate.NewReader(strings.NewReader(args[0].(string)))
-		data, err := io.ReadAll(reader)
+		limitReader := io.LimitReader(reader, DefaultMaxDecompressionSize)
+
+		data, err := io.ReadAll(limitReader)
 		if err != nil {
 			_ = reader.Close()
 			return "", err
