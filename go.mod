@@ -1,6 +1,6 @@
 module github.com/projectdiscovery/dsl
 
-go 1.20
+go 1.21
 
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
@@ -13,7 +13,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/mapcidr v1.1.34
-	github.com/projectdiscovery/utils v0.0.92
+	github.com/projectdiscovery/utils v0.0.94
 	github.com/sashabaranov/go-openai v1.14.2
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/stretchr/testify v1.9.0

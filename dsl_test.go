@@ -3,6 +3,7 @@ package dsl
 import (
 	"fmt"
 	"math"
+	"os"
 	"regexp"
 	"testing"
 	"time"
@@ -527,4 +528,27 @@ func testDslExpressions(t *testing.T, dslExpressions map[string]interface{}) {
 			fmt.Printf("%s: \t %v\n", dslExpression, actualResult)
 		})
 	}
+}
+
+func Test_Zlib_decompression_bomb(t *testing.T) {
+	compressedFile := "testdata/zlib_bomb.zlib"
+
+	data, err := os.ReadFile(compressedFile)
+	require.NoError(t, err)
+
+	dslExpression := `zlib_decode(body)`
+
+	helperFunctions := maps.Clone(DefaultHelperFunctions)
+	for _, function := range functions {
+		helperFunctions[function.Name] = function.Exec
+	}
+	compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, helperFunctions)
+	require.NoError(t, err, "Error while compiling the %q expression", dslExpression)
+
+	actualResult, err := compiledExpression.Evaluate(map[string]interface{}{
+		"body": string(data),
+	})
+	require.NoError(t, err, "Error while evaluating the compiled %q expression", dslExpression)
+	// Cannot be greater than 10MB
+	require.LessOrEqual(t, int64(len(actualResult.(string))), DefaultMaxDecompressionSize, "The result is too large")
 }
