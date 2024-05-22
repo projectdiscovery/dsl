@@ -297,7 +297,7 @@ func TestDslExpressions(t *testing.T) {
 		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:             "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
 		`ip_format('127.0.0.1', '1')`:                                          "127.0.0.1",
 		`ip_format('127.0.0.1', '3')`:                                          "0177.0.0.01",
-		`ip_format('127.0.0.1', '5')`:                                          "281472812449793",
+		`ip_format('127.0.0.1', '5')`:                                          "2130706433",
 		`ip_format('127.0.1.0', '11')`:                                         "127.0.256",
 		"unpack('>I', '\xac\xd7\t\xd0')":                                       -272646673,
 		"xor('\x01\x02', '\x02\x01')":                                          []uint8([]byte{0x3, 0x3}),
