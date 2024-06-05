@@ -863,8 +863,8 @@ func init() {
 			result := constraint.Check(firstParsed)
 			return result, nil
 		}))
-	MustAddFunction(NewWithPositionalArgs("padding", 3, false, func(args ...interface{}) (interface{}, error) {
-		// padding('Test String','A',50) // will pad "Test String" up to 50 characters with "A" as padding byte.
+	MustAddFunction(NewWithPositionalArgs("padding", 4, false, func(args ...interface{}) (interface{}, error) {
+		// padding('Test String', 'A', 50, 'prefix') // will pad "Test String" up to 50 characters with "A" as padding byte, prefixing it.
 		bLen := 0
 		switch value := args[2].(type) {
 		case float64:
@@ -891,32 +891,25 @@ func init() {
 		if dataLen >= bLen {
 			return toString(bData), nil // Note: if given string is longer than the desired length, it will not be truncated
 		}
-		if dataLen == 0 {
-			// If the initial string is empty, simply create a padded array with the specified length
-			paddedData := make([]byte, bLen)
-			for i := 0; i < bLen; i++ {
-				paddedData[i] = bByte[i%len(bByte)]
-			}
-			return toString(paddedData), nil
+
+		padMode, ok := args[3].(string)
+		if !ok || (padMode != "prefix" && padMode != "suffix") {
+			return nil, errorutil.New("padding mode must be 'prefix' or 'suffix'")
 		}
 
-		// Calculate the number of bytes needed for padding
-		paddingLen := (bLen - (dataLen % bLen)) % bLen
-
-		// Create a new byte array with the desired length
-		paddedData := make([]byte, dataLen+paddingLen)
-
-		// Copy the original data into the padded array
-		copy(paddedData, bData)
-
-		// Add padding bytes with the specified padding byte
-		for i := dataLen; i < len(paddedData); i++ {
-			paddedData[i] = bByte[i%len(bByte)]
+		paddingLen := bLen - dataLen
+		padding := make([]byte, paddingLen)
+		for i := 0; i < paddingLen; i++ {
+			padding[i] = bByte[i%len(bByte)]
 		}
 
-		return toString(paddedData), nil
-
+		if padMode == "prefix" {
+			return toString(append(padding, bData...)), nil
+		} else { // suffix
+			return toString(append(bData, padding...)), nil
+		}
 	}))
+
 
 	MustAddFunction(NewWithSingleSignature("print_debug",
 		"(args ...interface{})",
