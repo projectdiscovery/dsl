@@ -1,6 +1,7 @@
 package dsl
 
 import (
+	"archive/zip"
 	"bytes"
 	"compress/flate"
 	"compress/gzip"
@@ -160,6 +161,42 @@ func init() {
 			}
 		},
 	))
+
+	MustAddFunction(NewWithMultipleSignatures("zip", []string{"(file_entry string, content string, ... ) []byte"}, false, func(args ...interface{}) (interface{}, error) {
+		if len(args) == 0 || len(args)%2 != 0 {
+			return nil, fmt.Errorf("zip function requires pairs of file entry and content")
+		}
+
+		buf := new(bytes.Buffer)
+		zipWriter := zip.NewWriter(buf)
+
+		for i := 0; i < len(args); i += 2 {
+			fileEntry, ok := args[i].(string)
+			if !ok {
+				return nil, fmt.Errorf("file entry must be a string")
+			}
+			content, ok := args[i+1].(string)
+			if !ok {
+				return nil, fmt.Errorf("content must be a string")
+			}
+
+			f, err := zipWriter.Create(fileEntry)
+			if err != nil {
+				return nil, err
+			}
+			_, err = f.Write([]byte(content))
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		err := zipWriter.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		return buf.Bytes(), nil
+	}))
 	MustAddFunction(NewWithMultipleSignatures("uniq", []string{
 		"(input string) string",
 		"(input number) string",
