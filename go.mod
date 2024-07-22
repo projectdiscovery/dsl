@@ -13,7 +13,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.16
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/mapcidr v1.1.34
-	github.com/projectdiscovery/utils v0.2.1
+	github.com/projectdiscovery/utils v0.2.2
 	github.com/sashabaranov/go-openai v1.14.2
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/stretchr/testify v1.9.0
@@ -29,7 +29,7 @@ require (
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/hdm/jarm-go v0.0.7 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.16.7 // indirect
+	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/mholt/archiver/v3 v3.5.1 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.25 // indirect
