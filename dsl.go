@@ -910,7 +910,6 @@ func init() {
 		}
 	}))
 
-
 	MustAddFunction(NewWithSingleSignature("print_debug",
 		"(args ...interface{})",
 		false,
@@ -1244,6 +1243,21 @@ func init() {
 		}
 		return jarm.HashWithDialer(nil, hostname, port, 10)
 	}))
+
+	MustAddFunction(NewWithSingleSignature("count",
+		"(str, substr string) int",
+		false,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) < 2 {
+				return nil, ErrInvalidDslFunction
+			}
+
+			str := toString(args[0])
+			substr := toString(args[1])
+
+			return strings.Count(str, substr), nil
+		},
+	))
 
 	DefaultHelperFunctions = HelperFunctions()
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
