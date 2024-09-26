@@ -172,6 +172,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	to_lower(arg1 interface{}) interface{}
 	to_number(arg1 interface{}) interface{}
 	to_string(arg1 interface{}) interface{}
+	to_title(s, optionalLang string) string
 	to_unix_time(input string, optionalLayout string) int64
 	to_upper(arg1 interface{}) interface{}
 	trim(arg1, arg2 interface{}) interface{}
@@ -306,6 +307,7 @@ func TestDslExpressions(t *testing.T) {
 		"unpack('>I', '\xac\xd7\t\xd0')":                                       -272646673,
 		"xor('\x01\x02', '\x02\x01')":                                          []uint8([]byte{0x3, 0x3}),
 		`count("projectdiscovery", "e")`:                                       2,
+		`concat(to_title("pRoJeCt"), to_title("diScOvErY"))`:                   "ProjectDiscovery",
 	}
 
 	testDslExpressions(t, dslExpressions)
