@@ -172,6 +172,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	to_lower(arg1 interface{}) interface{}
 	to_number(arg1 interface{}) interface{}
 	to_string(arg1 interface{}) interface{}
+	to_title(s, optionalLang string) string
 	to_unix_time(input string, optionalLayout string) int64
 	to_upper(arg1 interface{}) interface{}
 	trim(arg1, arg2 interface{}) interface{}
@@ -297,15 +298,17 @@ func TestDslExpressions(t *testing.T) {
 		`uniq("ab", "cd", "12", "34", "12", "cd")`:                []string{"ab", "cd", "12", "34"},
 		`join(" ", uniq("ab", "cd", "12", "34", "12", "cd"))`:     "ab cd 12 34",
 		`join(", ", split(hex_encode("abcdefg"), 2))`:             "61, 62, 63, 64, 65, 66, 67",
-		`json_minify("{  \"name\":  \"John Doe\",   \"foo\":  \"bar\"     }")`: "{\"foo\":\"bar\",\"name\":\"John Doe\"}",
-		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:             "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
-		`ip_format('127.0.0.1', '1')`:                                          "127.0.0.1",
-		`ip_format('127.0.0.1', '3')`:                                          "0177.0.0.01",
-		`ip_format('127.0.0.1', '5')`:                                          "2130706433",
-		`ip_format('127.0.1.0', '11')`:                                         "127.0.256",
-		"unpack('>I', '\xac\xd7\t\xd0')":                                       -272646673,
-		"xor('\x01\x02', '\x02\x01')":                                          []uint8([]byte{0x3, 0x3}),
-		`count("projectdiscovery", "e")`:                                       2,
+		`json_minify("{  \"name\":  \"John Doe\",   \"foo\":  \"bar\"     }")`:     "{\"foo\":\"bar\",\"name\":\"John Doe\"}",
+		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:                 "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
+		`ip_format('127.0.0.1', '1')`:                                              "127.0.0.1",
+		`ip_format('127.0.0.1', '3')`:                                              "0177.0.0.01",
+		`ip_format('127.0.0.1', '5')`:                                              "2130706433",
+		`ip_format('127.0.1.0', '11')`:                                             "127.0.256",
+		"unpack('>I', '\xac\xd7\t\xd0')":                                           -272646673,
+		"xor('\x01\x02', '\x02\x01')":                                              []uint8([]byte{0x3, 0x3}),
+		`count("projectdiscovery", "e")`:                                           2,
+		`concat(to_title("pRoJeCt"), to_title("diScOvErY"))`:                       "ProjectDiscovery",
+		`concat(to_title("welcome "), "to", to_title(" watch"), to_title("mojo"))`: "Welcome to WatchMojo",
 	}
 
 	testDslExpressions(t, dslExpressions)

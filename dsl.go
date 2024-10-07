@@ -50,6 +50,8 @@ import (
 	randint "github.com/projectdiscovery/utils/rand"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/spaolacci/murmur3"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -1258,6 +1260,30 @@ func init() {
 			return strings.Count(str, substr), nil
 		},
 	))
+
+	MustAddFunction(NewWithSingleSignature("to_title",
+		"(s, optionalLang string) string",
+		false,
+		func(args ...interface{}) (interface{}, error) {
+			var lang = language.Und
+			var s string
+			var err error
+
+			argSize := len(args)
+			if argSize < 1 {
+				return nil, ErrInvalidDslFunction
+			}
+			s = toString(args[0])
+
+			if argSize >= 2 {
+				lang, err = language.Parse(toString(args[1]))
+				if err != nil {
+					lang = language.Und
+				}
+			}
+
+			return cases.Title(lang).String(s), nil
+		}))
 
 	DefaultHelperFunctions = HelperFunctions()
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
