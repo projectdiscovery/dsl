@@ -137,7 +137,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	len(arg1 interface{}) interface{}
 	line_ends_with(str string, suffix ...string) bool
 	line_starts_with(str string, prefix ...string) bool
-	llm_prompt(arg1, arg2 interface{}) interface{}
+	llm_prompt(prompt string, optionalModel string) string
 	md5(arg1 interface{}) interface{}
 	mmh3(arg1 interface{}) interface{}
 	oct_to_dec(arg1 interface{}) interface{}
