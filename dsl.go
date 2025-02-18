@@ -49,6 +49,7 @@ import (
 	maputils "github.com/projectdiscovery/utils/maps"
 	randint "github.com/projectdiscovery/utils/rand"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/sashabaranov/go-openai"
 	"github.com/spaolacci/murmur3"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -1150,13 +1151,27 @@ func init() {
 		}
 		return formattedIps[0], nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("llm_prompt", 1, true, func(args ...interface{}) (interface{}, error) {
-		prompt, ok := args[0].(string)
-		if !ok {
-			return nil, errors.New("invalid prompt")
-		}
-		return llm.Query(prompt)
-	}))
+	MustAddFunction(NewWithSingleSignature("llm_prompt",
+		"(prompt string, optionalModel string) string",
+		true, func(args ...interface{}) (interface{}, error) {
+			if len(args) < 1 {
+				return nil, ErrInvalidDslFunction
+			}
+
+			prompt, ok := args[0].(string)
+			if !ok {
+				return nil, errors.New("invalid prompt")
+			}
+
+			model := openai.GPT3Dot5Turbo // default model
+			if len(args) == 2 {
+				if model, ok = args[1].(string); !ok {
+					return nil, errors.New("invalid model")
+				}
+			}
+
+			return llm.Query(prompt, model)
+		}))
 	MustAddFunction(NewWithPositionalArgs("unpack", 2, false, func(args ...interface{}) (interface{}, error) {
 		// format as string (ref: https://docs.python.org/3/library/struct.html#format-characters)
 		format, ok := args[0].(string)

@@ -17,7 +17,7 @@ func init() {
 	}
 }
 
-func Query(prompt string) (string, error) {
+func Query(prompt, model string) (string, error) {
 	if client == nil {
 		return "", errors.New("no token defined")
 	}
@@ -25,7 +25,7 @@ func Query(prompt string) (string, error) {
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model: openai.GPT3Dot5Turbo,
+			Model: model,
 			Messages: []openai.ChatCompletionMessage{
 				{
 					Role:    openai.ChatMessageRoleUser,
