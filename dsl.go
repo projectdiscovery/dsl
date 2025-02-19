@@ -1164,7 +1164,7 @@ func init() {
 				return nil, errors.New("invalid prompt")
 			}
 
-			model := openai.GPT3Dot5Turbo // default model
+			model := openai.GPT4oMini // default model
 			if len(args) == 2 {
 				if model, ok = args[1].(string); !ok {
 					return nil, errors.New("invalid model")
