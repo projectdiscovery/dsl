@@ -1153,7 +1153,7 @@ func init() {
 	}))
 	MustAddFunction(NewWithSingleSignature("llm_prompt",
 		"(prompt string, optionalModel string) string",
-		true,
+		false,
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 1 {
 				return nil, ErrInvalidDslFunction
