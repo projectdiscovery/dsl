@@ -110,6 +110,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	contains(arg1, arg2 interface{}) interface{}
 	contains_all(body interface{}, substrs ...string) bool
 	contains_any(body interface{}, substrs ...string) bool
+	cookie_unsign(s string) string
 	count(str, substr string) int
 	date_time(dateTimeFormat string, optionalUnixTime interface{}) string
 	dec_to_hex(arg1 interface{}) interface{}
@@ -309,6 +310,7 @@ func TestDslExpressions(t *testing.T) {
 		`count("projectdiscovery", "e")`:                                           2,
 		`concat(to_title("pRoJeCt"), to_title("diScOvErY"))`:                       "ProjectDiscovery",
 		`concat(to_title("welcome "), "to", to_title(" watch"), to_title("mojo"))`: "Welcome to WatchMojo",
+		`cookie_unsign("gAJ9cQFYCgAAAHRlc3Rjb29raWVxAlgGAAAAd29ya2VkcQNzLg:1mgnkC:z5yDxzI06qYVAU3bkLaWYpADT4I")`: "changeme",
 	}
 
 	testDslExpressions(t, dslExpressions)
