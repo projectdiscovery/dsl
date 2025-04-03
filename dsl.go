@@ -83,7 +83,7 @@ var (
 var PrintDebugCallback func(args ...interface{}) error
 
 var functions []dslFunction
-var fakerFunctions []string
+var fakerFunctions []dslFunction
 
 func AddFunction(function dslFunction) error {
 	for _, f := range functions {
@@ -95,11 +95,13 @@ func AddFunction(function dslFunction) error {
 	return nil
 }
 
-func AddFakerFunction(function dslFunction) error {
-	if err := AddFunction(function); err != nil {
-		return err
+func addFakerFunction(function dslFunction) error {
+	for _, f := range functions {
+		if function.Name == f.Name {
+			return fmt.Errorf("%w: %q", errDuplicateFunc, f.Name)
+		}
 	}
-	fakerFunctions = append(fakerFunctions, function.Name)
+	fakerFunctions = append(fakerFunctions, function)
 	return nil
 }
 
@@ -1318,8 +1320,51 @@ func init() {
 		},
 	))
 
-	// Add faker functions
+	DefaultHelperFunctions = HelperFunctions()
+	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
+}
+
+// Helper function to generate function signatures for faker functions
+func getFakerSignature(info gofakeit.Info) string {
+	var params []string
+	for _, p := range info.Params {
+		params = append(params, fmt.Sprintf("%s %s", p.Field, p.Type))
+	}
+	return fmt.Sprintf("(%s) %s", strings.Join(params, ", "), info.Output)
+}
+
+func NewWithSingleSignature(name, signature string, cacheable bool, logic govaluate.ExpressionFunction) dslFunction {
+	return NewWithMultipleSignatures(name, []string{signature}, cacheable, logic)
+}
+
+func NewWithMultipleSignatures(name string, signatures []string, cacheable bool, expr govaluate.ExpressionFunction) dslFunction {
+	function := dslFunction{
+		Name:               name,
+		Signatures:         signatures,
+		ExpressionFunction: expr,
+		IsCacheable:        cacheable,
+	}
+
+	return function
+}
+
+func NewWithPositionalArgs(name string, numberOfArgs int, cacheable bool, expr govaluate.ExpressionFunction) dslFunction {
+	function := dslFunction{
+		Name:               name,
+		NumberOfArgs:       numberOfArgs,
+		ExpressionFunction: expr,
+		IsCacheable:        cacheable,
+	}
+	return function
+}
+
+// FakerFunctions returns the faker functions
+//
+// Note: It does not support backwards compatibility for function names
+func FakerFunctions() map[string]govaluate.ExpressionFunction {
+	funcs := make(map[string]govaluate.ExpressionFunction)
 	slug.CustomSub = map[string]string{" ": "_"}
+
 	for _, fInfo := range gofakeit.FuncLookups {
 		// NOTE(dwisiswant0): Skipping function because it not callable or the
 		// output is not printable.
@@ -1366,7 +1411,7 @@ func init() {
 
 				value, err := fInfo.Generate(faker, params, &fInfo)
 				if err != nil {
-					return "", err
+					return "", fmt.Errorf("faker error: %w", err)
 				}
 
 				return value, nil
@@ -1374,50 +1419,17 @@ func init() {
 		}
 
 		// Register the function with the DSL
-		err := AddFakerFunction(NewWithSingleSignature(
-			funcName, getFakerSignature(fInfo), false, fakerFunc(fInfo),
+		f := fakerFunc(fInfo)
+		err := addFakerFunction(NewWithSingleSignature(
+			funcName, getFakerSignature(fInfo), false, f,
 		))
 		if err != nil && !errors.Is(err, errDuplicateFunc) {
 			panic(fmt.Errorf("%w (faker)", err))
 		}
+		funcs[funcName] = f
 	}
 
-	DefaultHelperFunctions = HelperFunctions()
-	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
-}
-
-// Helper function to generate function signatures for faker functions
-func getFakerSignature(info gofakeit.Info) string {
-	var params []string
-	for _, p := range info.Params {
-		params = append(params, fmt.Sprintf("%s %s", p.Field, p.Type))
-	}
-	return fmt.Sprintf("(%s) %s", strings.Join(params, ", "), info.Output)
-}
-
-func NewWithSingleSignature(name, signature string, cacheable bool, logic govaluate.ExpressionFunction) dslFunction {
-	return NewWithMultipleSignatures(name, []string{signature}, cacheable, logic)
-}
-
-func NewWithMultipleSignatures(name string, signatures []string, cacheable bool, expr govaluate.ExpressionFunction) dslFunction {
-	function := dslFunction{
-		Name:               name,
-		Signatures:         signatures,
-		ExpressionFunction: expr,
-		IsCacheable:        cacheable,
-	}
-
-	return function
-}
-
-func NewWithPositionalArgs(name string, numberOfArgs int, cacheable bool, expr govaluate.ExpressionFunction) dslFunction {
-	function := dslFunction{
-		Name:               name,
-		NumberOfArgs:       numberOfArgs,
-		ExpressionFunction: expr,
-		IsCacheable:        cacheable,
-	}
-	return function
+	return funcs
 }
 
 // HelperFunctions returns the dsl helper functions
@@ -1444,23 +1456,37 @@ func GetFunctionNames(heperFunctions map[string]govaluate.ExpressionFunction) []
 	return maputils.GetKeys(heperFunctions)
 }
 
+// GetPrintableDslFunctionSignatures returns the function signatures for the
+// default DSL functions
 func GetPrintableDslFunctionSignatures(noColor bool) string {
 	if noColor {
-		return aggregate(getDslFunctionSignatures())
+		return aggregate(getDslFunctionSignatures(functions))
 	}
-	return aggregate(colorizeDslFunctionSignatures())
+	return aggregate(colorizeDslFunctionSignatures(functions))
 }
 
-func getDslFunctionSignatures() []string {
+// GetPrintableFakerDslFunctionSignatures returns the function signatures for
+// the faker functions.
+//
+// Note: [FakerFunctions] must be called first to populate the functions
+// map with the faker functions.
+func GetPrintableFakerDslFunctionSignatures(noColor bool) string {
+	if noColor {
+		return aggregate(getDslFunctionSignatures(fakerFunctions))
+	}
+	return aggregate(colorizeDslFunctionSignatures(fakerFunctions))
+}
+
+func getDslFunctionSignatures(funcs []dslFunction) []string {
 	var result []string
-	for _, function := range functions {
-		result = append(result, function.GetSignatures()...)
+	for _, f := range funcs {
+		result = append(result, f.GetSignatures()...)
 	}
 	return result
 }
 
-func colorizeDslFunctionSignatures() []string {
-	signatures := getDslFunctionSignatures()
+func colorizeDslFunctionSignatures(funcs []dslFunction) []string {
+	signatures := getDslFunctionSignatures(funcs)
 
 	colorToOrange := func(value string) string {
 		return aurora.Index(208, value).String()

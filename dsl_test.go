@@ -144,308 +144,13 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	padding(arg1, arg2, arg3, arg4 interface{}) interface{}
 	print_debug(args ...interface{})
 	public_ip() string
-	rand_ach_account_number() string
-	rand_ach_routing_number() string
-	rand_action_verb() string
-	rand_adjective() string
-	rand_adverb() string
-	rand_adverb_degree() string
-	rand_adverb_frequency_definite() string
-	rand_adverb_frequency_indefinite() string
-	rand_adverb_manner() string
-	rand_adverb_phrase() string
-	rand_adverb_place() string
-	rand_adverb_time_definite() string
-	rand_adverb_time_indefinite() string
-	rand_animal() string
-	rand_animal_type() string
-	rand_app_author() string
-	rand_app_name() string
-	rand_app_version() string
-	rand_author() string
 	rand_base(length uint, optionalCharSet string) string
-	rand_beer_alcohol() string
-	rand_beer_blg() string
-	rand_beer_hop() string
-	rand_beer_ibu() string
-	rand_beer_malt() string
-	rand_beer_name() string
-	rand_beer_style() string
-	rand_beer_yeast() string
-	rand_bird() string
-	rand_bitcoin_address() string
-	rand_bitcoin_private_key() string
-	rand_blurb() string
-	rand_boolean() bool
-	rand_breakfast() string
-	rand_bs() string
-	rand_buzzword() string
-	rand_car_fuel_type() string
-	rand_car_maker() string
-	rand_car_model() string
-	rand_car_transmission_type() string
-	rand_car_type() string
-	rand_cat() string
-	rand_celebrity_actor() string
-	rand_celebrity_business() string
-	rand_celebrity_sport() string
 	rand_char(optionalCharSet string) string
-	rand_chrome_user_agent() string
-	rand_city() string
-	rand_color() string
-	rand_comment() string
-	rand_company() string
-	rand_company_suffix() string
-	rand_connective() string
-	rand_connective_casual() string
-	rand_connective_comparitive() string
-	rand_connective_complaint() string
-	rand_connective_examplify() string
-	rand_connective_listing() string
-	rand_connective_time() string
-	rand_country() string
-	rand_country_abbreviation() string
-	rand_credit_card_cvv() string
-	rand_credit_card_exp() string
-	rand_credit_card_type() string
-	rand_currency_long() string
-	rand_currency_short() string
-	rand_cusip() string
-	rand_database_error() string
-	rand_date(format string) string
-	rand_daterange(startdate string, enddate string, format string) string
-	rand_day() int
-	rand_demonstrative_adjective() string
-	rand_descriptive_adjective() string
-	rand_dessert() string
-	rand_digit() string
-	rand_digitn(count uint) string
-	rand_dinner() string
-	rand_dog() string
-	rand_domain_name() string
-	rand_domain_suffix() string
-	rand_drink() string
-	rand_email() string
-	rand_emoji() string
-	rand_emoji_alias() string
-	rand_emoji_category() string
-	rand_emoji_description() string
-	rand_emoji_tag() string
-	rand_error() string
-	rand_error_object_word() string
-	rand_farm_animal() string
-	rand_file_extension() string
-	rand_file_mime_type() string
-	rand_firefox_user_agent() string
-	rand_first_name() string
-	rand_flip_a_coin() string
-	rand_float32() float32
-	rand_float32_range(min float, max float) float32
-	rand_float64() float64
-	rand_float64_range(min float, max float) float64
-	rand_fruit() string
-	rand_futuredate() time
-	rand_gamertag() string
-	rand_gender() string
-	rand_generate(str string) string
-	rand_genre() string
-	rand_grpc_error() string
-	rand_hacker_abbreviation() string
-	rand_hacker_adjective() string
-	rand_hacker_noun() string
-	rand_hacker_phrase() string
-	rand_hacker_verb() string
-	rand_hackering_verb() string
-	rand_helping_verb() string
-	rand_hex_color() string
-	rand_hexuint(bitSize int) string
-	rand_hipster_paragraph(paragraphcount int, sentencecount int, wordcount int, paragraphseparator string) string
-	rand_hipster_sentence(wordcount int) string
-	rand_hipster_word() string
-	rand_hobby() string
-	rand_hour() int
-	rand_http_client_error() string
-	rand_http_error() string
-	rand_http_method() string
-	rand_http_server_error() string
-	rand_http_status_code() int
-	rand_http_status_code_simple() int
-	rand_http_version() string
-	rand_image_jpeg(width int, height int) []byte
-	rand_image_png(width int, height int) []byte
-	rand_indefinite_adjective() string
-	rand_input_name() string
 	rand_int(optionalMin, optionalMax uint) int
-	rand_int16() int16
-	rand_int32() int32
-	rand_int64() int64
-	rand_int8() int8
-	rand_interjection() string
-	rand_interrogative_adjective() string
-	rand_intn(n int) int
-	rand_intrange(min int, max int) int
-	rand_intransitive_verb() string
 	rand_ip(cidr ...string) string
-	rand_ipv4_address() string
-	rand_ipv6_address() string
-	rand_isin() string
-	rand_job_descriptor() string
-	rand_job_level() string
-	rand_job_title() string
-	rand_language() string
-	rand_language_abbreviation() string
-	rand_language_bcp() string
-	rand_last_name() string
-	rand_latitude() float
-	rand_latitude_range(min float, max float) float
-	rand_letter() string
-	rand_lettern(count uint) string
-	rand_lexify(str string) string
-	rand_linking_verb() string
-	rand_log_level() string
-	rand_longitude() float
-	rand_longitude_range(min float, max float) float
-	rand_lorem_ipsum_paragraph(paragraphcount int, sentencecount int, wordcount int, paragraphseparator string) string
-	rand_lorem_ipsum_sentence(wordcount int) string
-	rand_lorem_ipsum_word() string
-	rand_lunch() string
-	rand_mac_address() string
-	rand_middle_name() string
-	rand_minecraft_animal() string
-	rand_minecraft_armor_part() string
-	rand_minecraft_armor_tier() string
-	rand_minecraft_biome() string
-	rand_minecraft_dye() string
-	rand_minecraft_food() string
-	rand_minecraft_mob_boss() string
-	rand_minecraft_mob_hostile() string
-	rand_minecraft_mob_neutral() string
-	rand_minecraft_mob_passive() string
-	rand_minecraft_ore() string
-	rand_minecraft_tool() string
-	rand_minecraft_villager_job() string
-	rand_minecraft_villager_level() string
-	rand_minecraft_villager_station() string
-	rand_minecraft_weapon() string
-	rand_minecraft_weather() string
-	rand_minecraft_wood() string
-	rand_minute() int
-	rand_month() string
-	rand_month_string() string
-	rand_movie_name() string
-	rand_name() string
-	rand_name_prefix() string
-	rand_name_suffix() string
-	rand_nanosecond() int
-	rand_nice_colors() []string
-	rand_noun() string
-	rand_noun_abstract() string
-	rand_noun_collective_animal() string
-	rand_noun_collective_people() string
-	rand_noun_collective_thing() string
-	rand_noun_common() string
-	rand_noun_concrete() string
-	rand_noun_countable() string
-	rand_noun_determiner() string
-	rand_noun_phrase() string
-	rand_noun_proper() string
-	rand_noun_uncountable() string
-	rand_number(min int, max int) int
-	rand_numerify(str string) string
-	rand_opera_user_agent() string
-	rand_paragraph(paragraphcount int, sentencecount int, wordcount int, paragraphseparator string) string
-	rand_password(lower bool, upper bool, numeric bool, special bool, space bool, length int) string
-	rand_pastdate() time
-	rand_pet_name() string
-	rand_phone() string
-	rand_phone_formatted() string
-	rand_phrase() string
-	rand_possessive_adjective() string
-	rand_preposition() string
-	rand_preposition_compound() string
-	rand_preposition_double() string
-	rand_preposition_phrase() string
-	rand_preposition_simple() string
-	rand_price(min float, max float) float64
-	rand_product_audience() []string
-	rand_product_benefit() string
-	rand_product_category() string
-	rand_product_description() string
-	rand_product_dimension() string
-	rand_product_feature() string
-	rand_product_material() string
-	rand_product_name() string
-	rand_product_suffix() string
-	rand_product_upc() string
-	rand_product_use_case() string
-	rand_programming_language() string
-	rand_pronoun() string
-	rand_pronoun_demonstrative() string
-	rand_pronoun_indefinite() string
-	rand_pronoun_interrogative() string
-	rand_pronoun_object() string
-	rand_pronoun_personal() string
-	rand_pronoun_possessive() string
-	rand_pronoun_reflective() string
-	rand_pronoun_relative() string
-	rand_proper_adjective() string
-	rand_quantitative_adjective() string
-	rand_question() string
-	rand_quote() string
-	rand_random_markdown_document() string
-	rand_random_text_email_document() string
-	rand_regex(str string) string
-	rand_rgb_color() []int
-	rand_runtime_error() string
-	rand_safari_user_agent() string
-	rand_safe_color() string
-	rand_school() string
-	rand_second() int
-	rand_sentence(wordcount int) string
-	rand_simple_sentence() string
-	rand_slogan() string
-	rand_snack() string
-	rand_song_artist() string
-	rand_song_name() string
-	rand_ssn() string
-	rand_state() string
-	rand_state_abbreviation() string
-	rand_street() string
-	rand_street_name() string
-	rand_street_number() string
-	rand_street_prefix() string
-	rand_street_suffix() string
-	rand_template(template string, data string) string
 	rand_text_alpha(length uint, optionalBadChars string) string
 	rand_text_alphanumeric(length uint, optionalBadChars string) string
 	rand_text_numeric(length uint, optionalBadNumbers string) string
-	rand_timezone() string
-	rand_timezone_abbreviation() string
-	rand_timezone_full() string
-	rand_timezone_offset() float32
-	rand_timezone_region() string
-	rand_title() string
-	rand_transitive_verb() string
-	rand_uint() uint
-	rand_uint16() uint16
-	rand_uint32() uint32
-	rand_uint64() uint64
-	rand_uint8() uint8
-	rand_uintn(n uint) uint
-	rand_uintrange(min uint, max uint) uint
-	rand_url() string
-	rand_user_agent() string
-	rand_username() string
-	rand_uuid() string
-	rand_validation_error() string
-	rand_vegetable() string
-	rand_verb() string
-	rand_verb_phrase() string
-	rand_vowel() string
-	rand_weekday() string
-	rand_word() string
-	rand_year() int
-	rand_zip() string
 	regex(arg1, arg2 interface{}) interface{}
 	regex_all(arg1, arg2 interface{}) interface{}
 	regex_any(arg1, arg2 interface{}) interface{}
@@ -754,9 +459,280 @@ func TestRandDslExpressions(t *testing.T) {
 }
 
 func TestFakerDslExpressions(t *testing.T) {
-	res1 := evaluateExpression(t, "rand_chrome_user_agent()")
-	res2 := evaluateExpression(t, "rand_chrome_user_agent()")
-	require.NotEqual(t, res1, res2, "The result of the res2 is same as the res1")
+	zeroArgsFakerFunctions := []string{
+		"rand_ach_account_number",
+		"rand_ach_routing_number",
+		"rand_action_verb",
+		"rand_adjective",
+		"rand_adverb",
+		"rand_adverb_degree",
+		"rand_adverb_frequency_definite",
+		"rand_adverb_frequency_indefinite",
+		"rand_adverb_manner",
+		"rand_adverb_phrase",
+		"rand_adverb_place",
+		"rand_adverb_time_definite",
+		"rand_adverb_time_indefinite",
+		"rand_animal",
+		"rand_animal_type",
+		"rand_app_author",
+		"rand_app_name",
+		"rand_app_version",
+		"rand_author",
+		"rand_beer_alcohol",
+		"rand_beer_blg",
+		"rand_beer_hop",
+		"rand_beer_ibu",
+		"rand_beer_malt",
+		"rand_beer_name",
+		"rand_beer_style",
+		"rand_beer_yeast",
+		"rand_bird",
+		"rand_bitcoin_address",
+		"rand_bitcoin_private_key",
+		"rand_blurb",
+		"rand_boolean",
+		"rand_breakfast",
+		"rand_bs",
+		"rand_buzzword",
+		"rand_car_fuel_type",
+		"rand_car_maker",
+		"rand_car_model",
+		"rand_car_transmission_type",
+		"rand_car_type",
+		"rand_cat",
+		"rand_celebrity_actor",
+		"rand_celebrity_business",
+		"rand_celebrity_sport",
+		"rand_chrome_user_agent",
+		"rand_city",
+		"rand_color",
+		"rand_comment",
+		"rand_company",
+		"rand_company_suffix",
+		"rand_connective",
+		"rand_connective_casual",
+		"rand_connective_comparitive",
+		"rand_connective_complaint",
+		"rand_connective_examplify",
+		"rand_connective_listing",
+		"rand_connective_time",
+		"rand_country",
+		"rand_country_abbreviation",
+		"rand_credit_card_cvv",
+		"rand_credit_card_exp",
+		"rand_credit_card_type",
+		"rand_currency_long",
+		"rand_currency_short",
+		"rand_cusip",
+		"rand_database_error",
+		"rand_day",
+		"rand_demonstrative_adjective",
+		"rand_descriptive_adjective",
+		"rand_dessert",
+		"rand_digit",
+		"rand_dinner",
+		"rand_dog",
+		"rand_domain_name",
+		"rand_domain_suffix",
+		"rand_drink",
+		"rand_email",
+		"rand_emoji",
+		"rand_emoji_alias",
+		"rand_emoji_category",
+		"rand_emoji_description",
+		"rand_emoji_tag",
+		"rand_error",
+		"rand_error_object_word",
+		"rand_farm_animal",
+		"rand_file_extension",
+		"rand_file_mime_type",
+		"rand_firefox_user_agent",
+		"rand_first_name",
+		"rand_flip_a_coin",
+		"rand_float32",
+		"rand_float64",
+		"rand_fruit",
+		"rand_futuredate",
+		"rand_gamertag",
+		"rand_gender",
+		"rand_genre",
+		"rand_grpc_error",
+		"rand_hacker_abbreviation",
+		"rand_hacker_adjective",
+		"rand_hacker_noun",
+		"rand_hacker_phrase",
+		"rand_hacker_verb",
+		"rand_hackering_verb",
+		"rand_helping_verb",
+		"rand_hex_color",
+		"rand_hipster_word",
+		"rand_hobby",
+		"rand_hour",
+		"rand_http_client_error",
+		"rand_http_error",
+		"rand_http_method",
+		"rand_http_server_error",
+		"rand_http_status_code",
+		"rand_http_status_code_simple",
+		"rand_http_version",
+		"rand_indefinite_adjective",
+		"rand_input_name",
+		"rand_int16",
+		"rand_int32",
+		"rand_int64",
+		"rand_int8",
+		"rand_interjection",
+		"rand_interrogative_adjective",
+		"rand_intransitive_verb",
+		"rand_ipv4_address",
+		"rand_ipv6_address",
+		"rand_isin",
+		"rand_job_descriptor",
+		"rand_job_level",
+		"rand_job_title",
+		"rand_language",
+		"rand_language_abbreviation",
+		"rand_language_bcp",
+		"rand_last_name",
+		"rand_latitude",
+		"rand_letter",
+		"rand_linking_verb",
+		"rand_log_level",
+		"rand_longitude",
+		"rand_lorem_ipsum_word",
+		"rand_lunch",
+		"rand_mac_address",
+		"rand_middle_name",
+		"rand_minecraft_animal",
+		"rand_minecraft_armor_part",
+		"rand_minecraft_armor_tier",
+		"rand_minecraft_biome",
+		"rand_minecraft_dye",
+		"rand_minecraft_food",
+		"rand_minecraft_mob_boss",
+		"rand_minecraft_mob_hostile",
+		"rand_minecraft_mob_neutral",
+		"rand_minecraft_mob_passive",
+		"rand_minecraft_ore",
+		"rand_minecraft_tool",
+		"rand_minecraft_villager_job",
+		"rand_minecraft_villager_level",
+		"rand_minecraft_villager_station",
+		"rand_minecraft_weapon",
+		"rand_minecraft_weather",
+		"rand_minecraft_wood",
+		"rand_minute",
+		"rand_month",
+		"rand_month_string",
+		"rand_movie_name",
+		"rand_name",
+		"rand_name_prefix",
+		"rand_name_suffix",
+		"rand_nanosecond",
+		"rand_nice_colors",
+		"rand_noun",
+		"rand_noun_abstract",
+		"rand_noun_collective_animal",
+		"rand_noun_collective_people",
+		"rand_noun_collective_thing",
+		"rand_noun_common",
+		"rand_noun_concrete",
+		"rand_noun_countable",
+		"rand_noun_determiner",
+		"rand_noun_phrase",
+		"rand_noun_proper",
+		"rand_noun_uncountable",
+		"rand_opera_user_agent",
+		"rand_pastdate",
+		"rand_pet_name",
+		"rand_phone",
+		"rand_phone_formatted",
+		"rand_phrase",
+		"rand_possessive_adjective",
+		"rand_preposition",
+		"rand_preposition_compound",
+		"rand_preposition_double",
+		"rand_preposition_phrase",
+		"rand_preposition_simple",
+		"rand_product_audience",
+		"rand_product_benefit",
+		"rand_product_category",
+		"rand_product_description",
+		"rand_product_dimension",
+		"rand_product_feature",
+		"rand_product_material",
+		"rand_product_name",
+		"rand_product_suffix",
+		"rand_product_upc",
+		"rand_product_use_case",
+		"rand_programming_language",
+		"rand_pronoun",
+		"rand_pronoun_demonstrative",
+		"rand_pronoun_indefinite",
+		"rand_pronoun_interrogative",
+		"rand_pronoun_object",
+		"rand_pronoun_personal",
+		"rand_pronoun_possessive",
+		"rand_pronoun_reflective",
+		"rand_pronoun_relative",
+		"rand_proper_adjective",
+		"rand_quantitative_adjective",
+		"rand_question",
+		"rand_quote",
+		"rand_random_markdown_document",
+		"rand_random_text_email_document",
+		"rand_rgb_color",
+		"rand_runtime_error",
+		"rand_safari_user_agent",
+		"rand_safe_color",
+		"rand_school",
+		"rand_second",
+		"rand_simple_sentence",
+		"rand_slogan",
+		"rand_snack",
+		"rand_song_artist",
+		"rand_song_name",
+		"rand_ssn",
+		"rand_state",
+		"rand_state_abbreviation",
+		"rand_street",
+		"rand_street_name",
+		"rand_street_number",
+		"rand_street_prefix",
+		"rand_street_suffix",
+		"rand_timezone",
+		"rand_timezone_abbreviation",
+		"rand_timezone_full",
+		"rand_timezone_offset",
+		"rand_timezone_region",
+		"rand_title",
+		"rand_transitive_verb",
+		"rand_uint",
+		"rand_uint16",
+		"rand_uint32",
+		"rand_uint64",
+		"rand_uint8",
+		"rand_url",
+		"rand_user_agent",
+		"rand_username",
+		"rand_uuid",
+		"rand_validation_error",
+		"rand_vegetable",
+		"rand_verb",
+		"rand_verb_phrase",
+		"rand_vowel",
+		"rand_weekday",
+		"rand_word",
+		"rand_year",
+		"rand_zip",
+	}
+
+	for _, functionName := range zeroArgsFakerFunctions {
+		t.Run(functionName, func(t *testing.T) {
+			evaluateFakerExpression(t, functionName+"()")
+		})
+	}
 }
 
 func TestRandIntDslExpressions(t *testing.T) {
@@ -820,6 +796,22 @@ func evaluateExpression(t *testing.T, dslExpression string, functions ...dslFunc
 	for _, negativeTestWord := range []string{"panic", "invalid", "error"} {
 		require.NotContains(t, fmt.Sprintf("%v", actualResult), negativeTestWord)
 	}
+
+	return actualResult
+}
+
+func evaluateFakerExpression(t *testing.T, dslExpression string, functions ...dslFunction) interface{} {
+	helperFunctions := maps.Clone(FakerFunctions())
+	for _, function := range functions {
+		helperFunctions[function.Name] = function.Exec
+	}
+	compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, helperFunctions)
+	require.NoError(t, err, "Error while compiling the %q expression", dslExpression)
+
+	actualResult, err := compiledExpression.Evaluate(make(map[string]interface{}))
+	require.NoError(t, err, "Error while evaluating the compiled %q expression", dslExpression)
+
+	require.NotContains(t, fmt.Sprintf("%v", actualResult), "faker error")
 
 	return actualResult
 }
