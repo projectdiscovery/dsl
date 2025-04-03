@@ -1,11 +1,13 @@
 module github.com/projectdiscovery/dsl
 
-go 1.21
+go 1.22
 
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
+	github.com/brianvoe/gofakeit/v7 v7.2.1
+	github.com/gosimple/slug v1.15.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/kataras/jwt v0.1.8
 	github.com/logrusorgru/aurora v2.0.3+incompatible
@@ -28,6 +30,7 @@ require (
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
+	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hdm/jarm-go v0.0.7 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
