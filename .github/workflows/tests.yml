@@ -1,14 +1,36 @@
-name: 🚨 CodeQL Analysis
-
+name: 🔨 Tests
 on:
-  workflow_dispatch:
   pull_request:
-    branches:
-      - dev
+  workflow_dispatch:
 
 jobs:
-  analyze:
-    name: Analyze
+  lint:
+    name: Lint Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/golangci-lint@v1
+
+  tests:
+    name: Test Builds
+    needs: [lint]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: projectdiscovery/actions/setup/go@v1
+      - run: go test -race ./...
+
+      # Todo: create example folder
+      # - name: Build
+      #   run: go build .
+
+  codeql:
+    name: CodeQL Analysis
+    needs: [tests]
     runs-on: ubuntu-latest
     permissions:
       actions: read
