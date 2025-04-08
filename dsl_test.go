@@ -23,13 +23,150 @@ func TestIndex(t *testing.T) {
 }
 
 func TestDSLURLEncodeDecode(t *testing.T) {
-	encoded, err := DefaultHelperFunctions["url_encode"]("&test\"")
-	require.Nil(t, err, "could not url encode")
-	require.Equal(t, "%26test%22", encoded, "could not get url encoded data")
+	t.Run("Standard encoding (default mode)", func(t *testing.T) {
+		testCases := []struct {
+			name     string
+			input    string
+			expected string
+		}{
+			{
+				name:     "basic ascii",
+				input:    "Hello World",
+				expected: "Hello%20World",
+			},
+			{
+				name:     "special characters",
+				input:    "!@#$%^&*()_+",
+				expected: "!%40%23%24%25%5E%26*()_%2B",
+			},
+			{
+				name:     "query string characters",
+				input:    "key=value&other=value?param=test",
+				expected: "key%3Dvalue%26other%3Dvalue%3Fparam%3Dtest",
+			},
+			{
+				name:     "path characters",
+				input:    "/path/to/resource/",
+				expected: "%2Fpath%2Fto%2Fresource%2F",
+			},
+			{
+				name:     "unicode characters",
+				input:    "こんにちは世界",
+				expected: "%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF%E4%B8%96%E7%95%8C",
+			},
+			{
+				name:     "emoji",
+				input:    "🚀✨",
+				expected: "%F0%9F%9A%80%E2%9C%A8",
+			},
+			{
+				name:     "reserved characters that should be encoded",
+				input:    ";,/?:@&=+$#",
+				expected: "%3B%2C%2F%3F%3A%40%26%3D%2B%24%23",
+			},
+			{
+				name:     "unreserved characters that should not be encoded",
+				input:    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()",
+				expected: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()",
+			},
+			{
+				name:     "whitespace characters",
+				input:    " \t\n\r",
+				expected: "%20%09%0A%0D",
+			},
+			{
+				name:     "std library encoding",
+				input:    "&test\"",
+				expected: "%26test%22",
+			},
+		}
 
-	decoded, err := DefaultHelperFunctions["url_decode"]("%26test%22")
-	require.Nil(t, err, "could not url encode")
-	require.Equal(t, "&test\"", decoded, "could not get url decoded data")
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				encoded, err := DefaultHelperFunctions["url_encode"](tc.input)
+				require.NoError(t, err, "url_encode should not error")
+				require.Equal(t, tc.expected, encoded, "url_encode (standard mode) output should match expected")
+
+				encoded, err = DefaultHelperFunctions["url_encode"](tc.input, false)
+				require.NoError(t, err, "url_encode should not error with explicit false")
+				require.Equal(t, tc.expected, encoded, "url_encode with explicit false should match expected")
+
+				decoded, err := DefaultHelperFunctions["url_decode"](encoded)
+				require.NoError(t, err, "url_decode should not error")
+				require.Equal(t, tc.input, decoded, "url_decode should reverse url_encode")
+			})
+		}
+	})
+
+	t.Run("Encode all special characters (CyberChef mode)", func(t *testing.T) {
+		testCases := []struct {
+			name     string
+			input    string
+			expected string
+		}{
+			{
+				name:     "basic ascii",
+				input:    "Hello World",
+				expected: "Hello%20World",
+			},
+			{
+				name:     "special characters",
+				input:    "!@#$%^&*()_+",
+				expected: "%21%40%23%24%25%5E%26%2A%28%29%5F%2B",
+			},
+			{
+				name:     "query string characters",
+				input:    "key=value&other=value?param=test",
+				expected: "key%3Dvalue%26other%3Dvalue%3Fparam%3Dtest",
+			},
+			{
+				name:     "path characters",
+				input:    "/path/to/resource/",
+				expected: "%2Fpath%2Fto%2Fresource%2F",
+			},
+			{
+				name:     "unicode characters",
+				input:    "こんにちは世界",
+				expected: "%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF%E4%B8%96%E7%95%8C",
+			},
+			{
+				name:     "emoji",
+				input:    "🚀✨",
+				expected: "%F0%9F%9A%80%E2%9C%A8",
+			},
+			{
+				name:     "reserved characters that should be encoded",
+				input:    ";,/?:@&=+$#",
+				expected: "%3B%2C%2F%3F%3A%40%26%3D%2B%24%23",
+			},
+			{
+				name:     "all special characters encoded",
+				input:    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()",
+				expected: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%2D%5F%2E%21%7E%2A%27%28%29",
+			},
+			{
+				name:     "whitespace characters",
+				input:    " \t\n\r",
+				expected: "%20%09%0A%0D",
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				encoded, err := DefaultHelperFunctions["url_encode"](tc.input, true)
+				require.NoError(t, err, "url_encode should not error with boolean true")
+				require.Equal(t, tc.expected, encoded, "url_encode (encode all mode) output should match expected")
+
+				encoded, err = DefaultHelperFunctions["url_encode"](tc.input, 1)
+				require.NoError(t, err, "url_encode should not error with numeric 1")
+				require.Equal(t, tc.expected, encoded, "url_encode with numeric 1 should match expected")
+
+				decoded, err := DefaultHelperFunctions["url_decode"](encoded)
+				require.NoError(t, err, "url_decode should not error")
+				require.Equal(t, tc.input, decoded, "url_decode should reverse url_encode")
+			})
+		}
+	})
 }
 
 func TestDSLTimeComparison(t *testing.T) {
@@ -187,7 +324,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	unix_time(optionalSeconds uint) float64
 	unpack(arg1, arg2 interface{}) interface{}
 	url_decode(arg1 interface{}) interface{}
-	url_encode(arg1 interface{}) interface{}
+	url_encode(s string, optionalEncodeAllSpecialChars bool) string
 	wait_for(seconds uint)
 	xor(args ...interface{}) interface{}
 	zip(file_entry string, content string, ... ) []byte
