@@ -44,7 +44,6 @@ import (
 	"github.com/projectdiscovery/mapcidr"
 	jarm "github.com/projectdiscovery/utils/crypto/jarm"
 	errors "github.com/projectdiscovery/utils/errors"
-	errorutil "github.com/projectdiscovery/utils/errors"
 	maputils "github.com/projectdiscovery/utils/maps"
 	randint "github.com/projectdiscovery/utils/rand"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -931,11 +930,11 @@ func init() {
 			bLen = int(floatVal)
 		}
 		if bLen == 0 {
-			return nil, errorutil.New("invalid padding length")
+			return nil, errors.New("invalid padding length")
 		}
 		bByte := []byte(toString(args[1]))
 		if len(bByte) == 0 {
-			return nil, errorutil.New("invalid padding byte")
+			return nil, errors.New("invalid padding byte")
 		}
 		bData := []byte(toString(args[0]))
 		dataLen := len(bData)
@@ -945,7 +944,7 @@ func init() {
 
 		padMode, ok := args[3].(string)
 		if !ok || (padMode != "prefix" && padMode != "suffix") {
-			return nil, errorutil.New("padding mode must be 'prefix' or 'suffix'")
+			return nil, errors.New("padding mode must be 'prefix' or 'suffix'")
 		}
 
 		paddingLen := bLen - dataLen

@@ -74,6 +74,11 @@ func TestDSLURLEncodeDecode(t *testing.T) {
 				input:    " \t\n\r",
 				expected: "%20%09%0A%0D",
 			},
+			{
+				name:     "std library encoding",
+				input:    "&test\"",
+				expected: "%26test%22",
+			},
 		}
 
 		for _, tc := range testCases {
