@@ -54,7 +54,7 @@ func (d dslFunction) Exec(args ...interface{}) (interface{}, error) {
 		return d.ExpressionFunction(args...)
 	}
 
-	functionHash := d.hash()
+	functionHash := d.hash(args...)
 	if result, err := resultCache.Get(functionHash); err == nil {
 		return result, nil
 	}
