@@ -23,7 +23,6 @@ import (
 	"io"
 	"math"
 	"net"
-	"net/url"
 	"reflect"
 	"regexp"
 	"sort"
@@ -385,11 +384,60 @@ func init() {
 		data, err := base64.StdEncoding.DecodeString(toString(args[0]))
 		return string(data), err
 	}))
-	MustAddFunction(NewWithPositionalArgs("url_encode", 1, false, func(args ...interface{}) (interface{}, error) {
-		return url.QueryEscape(toString(args[0])), nil
-	}))
+	MustAddFunction(NewWithSingleSignature("url_encode",
+		"(s string, optionalEncodeAllSpecialChars bool) string",
+		false,
+		func(args ...interface{}) (interface{}, error) {
+			var encodeAllChars bool
+			s := toString(args[0])
+
+			if len(args) > 1 {
+				switch v := args[1].(type) {
+				case bool:
+					encodeAllChars = v
+				case int, int64:
+					encodeAllChars = v == 1
+				}
+			}
+
+			shouldEscape := func(c rune, encodeAllChars bool) bool {
+				isAlphanums := (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+				if encodeAllChars {
+					return isAlphanums
+				}
+
+				return isAlphanums || (c == '-' || c == '_' || c == '.' || c == '!' || c == '~' || c == '*' || c == '\'' || c == '(' || c == ')')
+			}
+
+			var result strings.Builder
+			for _, c := range s {
+				if shouldEscape(c, encodeAllChars) {
+					result.WriteRune(c)
+				} else {
+					for _, b := range []byte(string(c)) {
+						result.WriteString(fmt.Sprintf("%%%02X", b))
+					}
+				}
+			}
+			return result.String(), nil
+		},
+	))
 	MustAddFunction(NewWithPositionalArgs("url_decode", 1, false, func(args ...interface{}) (interface{}, error) {
-		return url.QueryUnescape(toString(args[0]))
+		s := toString(args[0])
+		var result strings.Builder
+		for i := 0; i < len(s); i++ {
+			if s[i] == '%' && i+2 < len(s) {
+				if hex, err := strconv.ParseUint(s[i+1:i+3], 16, 8); err == nil {
+					result.WriteByte(byte(hex))
+					i += 2
+				} else {
+					result.WriteByte(s[i])
+				}
+			} else {
+				result.WriteByte(s[i])
+			}
+		}
+		return result.String(), nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("hex_encode", 1, false, func(args ...interface{}) (interface{}, error) {
 		return hex.EncodeToString([]byte(toString(args[0]))), nil
