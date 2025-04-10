@@ -70,13 +70,13 @@ func (d dslFunction) Exec(args ...interface{}) (interface{}, error) {
 
 func (d dslFunction) hash(args ...interface{}) string {
 	bb := bytebufferpool.Get()
-	bb.WriteString(d.Name)
-	bb.WriteString("-")
+	_, _ = bb.WriteString(d.Name)
+	_, _ = bb.WriteString("-")
 
 	for i, arg := range args {
-		bb.WriteString(fmt.Sprintf("%v", arg))
+		_, _ = bb.WriteString(fmt.Sprintf("%v", arg))
 		if i < len(args)-1 {
-			bb.WriteString(",")
+			_, _ = bb.WriteString(",")
 		}
 	}
 
