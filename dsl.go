@@ -66,9 +66,9 @@ var (
 	// Use With Caution: Nuclei ignores this error in extractors(ref: https://github.com/projectdiscovery/nuclei/issues/3950)
 	ErrParsingArg = errors.New("error parsing argument value")
 
-	DefaultMaxDecompressionSize                                   = int64(10 * 1024 * 1024) // 10MB
-	DefaultCacheSize                                              = 250
-	resultCache                 gcache.Cache[string, interface{}] = gcache.New[string, interface{}](DefaultCacheSize).Build()
+	DefaultMaxDecompressionSize = int64(10 * 1024 * 1024) // 10MB
+	DefaultCacheSize            = 6144
+	resultCache                 = gcache.New[string, interface{}](DefaultCacheSize).Build()
 )
 
 var PrintDebugCallback func(args ...interface{}) error
