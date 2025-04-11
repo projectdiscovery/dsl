@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
-	"github.com/valyala/bytebufferpool"
 )
 
 type dslFunction struct {
@@ -69,18 +68,5 @@ func (d dslFunction) Exec(args ...interface{}) (interface{}, error) {
 }
 
 func (d dslFunction) hash(args ...interface{}) string {
-	bb := bytebufferpool.Get()
-	_, _ = bb.WriteString(d.Name)
-	_, _ = bb.WriteString("-")
-
-	for i, arg := range args {
-		_, _ = bb.WriteString(fmt.Sprintf("%v", arg))
-		if i < len(args)-1 {
-			_, _ = bb.WriteString(",")
-		}
-	}
-
-	bytebufferpool.Put(bb)
-
-	return bb.String()
+	return fmt.Sprintf(d.Name, args...)
 }

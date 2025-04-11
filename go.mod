@@ -17,7 +17,6 @@ require (
 	github.com/sashabaranov/go-openai v1.37.0
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/stretchr/testify v1.9.0
-	github.com/valyala/bytebufferpool v1.0.0
 	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
 	golang.org/x/text v0.21.0
 )
