@@ -68,5 +68,16 @@ func (d dslFunction) Exec(args ...interface{}) (interface{}, error) {
 }
 
 func (d dslFunction) hash(args ...interface{}) string {
-	return fmt.Sprintf(d.Name, args...)
+	var sb strings.Builder
+	_, _ = sb.WriteString(d.Name)
+	_, _ = sb.WriteString("-")
+
+	for i, arg := range args {
+		_, _ = sb.WriteString(fmt.Sprintf("%v", arg))
+		if i < len(args)-1 {
+			_, _ = sb.WriteString(",")
+		}
+	}
+
+	return sb.String()
 }
