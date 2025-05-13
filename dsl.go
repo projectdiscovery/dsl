@@ -297,6 +297,21 @@ func init() {
 		_ = reader.Close()
 		return string(data), nil
 	}))
+	MustAddFunction(NewWithPositionalArgs("gzip_partial_decode", 1, true, func(args ...interface{}) (interface{}, error) {
+		reader, err := gzip.NewReader(strings.NewReader(args[0].(string)))
+		if err != nil {
+			return "", err
+		}
+		limitReader := io.LimitReader(reader, DefaultMaxDecompressionSize)
+
+		data, err := io.ReadAll(limitReader)
+		if err != nil && err != io.ErrUnexpectedEOF {
+			_ = reader.Close()
+			return "", err
+		}
+		_ = reader.Close()
+		return string(data), nil
+	}))
 	MustAddFunction(NewWithPositionalArgs("zlib", 1, true, func(args ...interface{}) (interface{}, error) {
 		buffer := &bytes.Buffer{}
 		writer := zlib.NewWriter(buffer)
