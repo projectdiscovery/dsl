@@ -256,7 +256,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	generate_java_gadget(arg1, arg2, arg3 interface{}) interface{}
 	generate_jwt(jsonString, algorithm, optionalSignature string, optionalMaxAgeUnix interface{}) string
 	gzip(arg1 interface{}) interface{}
-	gzip_decode(arg1 interface{}) interface{}
+	gzip_decode(data string, optionalReadLimit int) string
 	hex_decode(arg1 interface{}) interface{}
 	hex_encode(arg1 interface{}) interface{}
 	hex_to_dec(arg1 interface{}) interface{}
@@ -264,7 +264,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	html_escape(arg1 interface{}) interface{}
 	html_unescape(arg1 interface{}) interface{}
 	index(arg1, arg2 interface{}) interface{}
-	inflate(arg1 interface{}) interface{}
+	inflate(data string, optionalReadLimit int) string
 	ip_format(arg1, arg2 interface{}) interface{}
 	jarm(arg1 interface{}) interface{}
 	join(separator string, elements ...interface{}) string
@@ -329,7 +329,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	xor(args ...interface{}) interface{}
 	zip(file_entry string, content string, ... ) []byte
 	zlib(arg1 interface{}) interface{}
-	zlib_decode(arg1 interface{}) interface{}
+	zlib_decode(data string, optionalReadLimit int) string
 `
 
 	signatures := GetPrintableDslFunctionSignatures(true)

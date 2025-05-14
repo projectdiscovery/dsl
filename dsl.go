@@ -282,21 +282,39 @@ func init() {
 
 		return buffer.String(), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("gzip_decode", 1, true, func(args ...interface{}) (interface{}, error) {
-		reader, err := gzip.NewReader(strings.NewReader(args[0].(string)))
-		if err != nil {
-			return "", err
-		}
-		limitReader := io.LimitReader(reader, DefaultMaxDecompressionSize)
+	MustAddFunction(NewWithSingleSignature("gzip_decode",
+		"(data string, optionalReadLimit int) string",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) == 0 {
+				return nil, ErrInvalidDslFunction
+			}
 
-		data, err := io.ReadAll(limitReader)
-		if err != nil {
+			argData := toString(args[0])
+			readLimit := DefaultMaxDecompressionSize
+
+			if len(args) > 1 {
+				if limit, ok := args[1].(float64); ok {
+					readLimit = int64(limit)
+				}
+			}
+
+			reader, err := gzip.NewReader(strings.NewReader(argData))
+			if err != nil {
+				return "", err
+			}
+			limitReader := io.LimitReader(reader, readLimit)
+
+			data, err := io.ReadAll(limitReader)
+			if err != nil && err != io.EOF {
+				_ = reader.Close()
+
+				return "", err
+			}
 			_ = reader.Close()
-			return "", err
-		}
-		_ = reader.Close()
-		return string(data), nil
-	}))
+
+			return string(data), nil
+		}))
 	MustAddFunction(NewWithPositionalArgs("zlib", 1, true, func(args ...interface{}) (interface{}, error) {
 		buffer := &bytes.Buffer{}
 		writer := zlib.NewWriter(buffer)
@@ -308,21 +326,39 @@ func init() {
 
 		return buffer.String(), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("zlib_decode", 1, true, func(args ...interface{}) (interface{}, error) {
-		reader, err := zlib.NewReader(strings.NewReader(args[0].(string)))
-		if err != nil {
-			return "", err
-		}
-		limitReader := io.LimitReader(reader, DefaultMaxDecompressionSize)
+	MustAddFunction(NewWithSingleSignature("zlib_decode",
+		"(data string, optionalReadLimit int) string",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) == 0 {
+				return nil, ErrInvalidDslFunction
+			}
 
-		data, err := io.ReadAll(limitReader)
-		if err != nil {
+			argData := toString(args[0])
+			readLimit := DefaultMaxDecompressionSize
+
+			if len(args) > 1 {
+				if limit, ok := args[1].(float64); ok {
+					readLimit = int64(limit)
+				}
+			}
+
+			reader, err := zlib.NewReader(strings.NewReader(argData))
+			if err != nil {
+				return "", err
+			}
+			limitReader := io.LimitReader(reader, readLimit)
+
+			data, err := io.ReadAll(limitReader)
+			if err != nil && err != io.EOF {
+				_ = reader.Close()
+
+				return "", err
+			}
 			_ = reader.Close()
-			return "", err
-		}
-		_ = reader.Close()
-		return string(data), nil
-	}))
+
+			return string(data), nil
+		}))
 
 	MustAddFunction(NewWithPositionalArgs("deflate", 1, true, func(args ...interface{}) (interface{}, error) {
 		buffer := &bytes.Buffer{}
@@ -338,18 +374,36 @@ func init() {
 
 		return buffer.String(), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("inflate", 1, true, func(args ...interface{}) (interface{}, error) {
-		reader := flate.NewReader(strings.NewReader(args[0].(string)))
-		limitReader := io.LimitReader(reader, DefaultMaxDecompressionSize)
+	MustAddFunction(NewWithSingleSignature("inflate",
+		"(data string, optionalReadLimit int) string",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) == 0 {
+				return nil, ErrInvalidDslFunction
+			}
 
-		data, err := io.ReadAll(limitReader)
-		if err != nil {
+			argData := toString(args[0])
+			readLimit := DefaultMaxDecompressionSize
+
+			if len(args) > 1 {
+				if limit, ok := args[1].(float64); ok {
+					readLimit = int64(limit)
+				}
+			}
+
+			reader := flate.NewReader(strings.NewReader(argData))
+			limitReader := io.LimitReader(reader, readLimit)
+
+			data, err := io.ReadAll(limitReader)
+			if err != nil && err != io.EOF {
+				_ = reader.Close()
+
+				return "", err
+			}
 			_ = reader.Close()
-			return "", err
-		}
-		_ = reader.Close()
-		return string(data), nil
-	}))
+
+			return string(data), nil
+		}))
 
 	MustAddFunction(NewWithSingleSignature("date_time",
 		"(dateTimeFormat string, optionalUnixTime interface{}) string",
