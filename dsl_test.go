@@ -256,7 +256,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	generate_java_gadget(arg1, arg2, arg3 interface{}) interface{}
 	generate_jwt(jsonString, algorithm, optionalSignature string, optionalMaxAgeUnix interface{}) string
 	gzip(arg1 interface{}) interface{}
-	gzip_decode(arg1 interface{}) interface{}
+	gzip_decode(data string, optionalReadLimit int) string
 	hex_decode(arg1 interface{}) interface{}
 	hex_encode(arg1 interface{}) interface{}
 	hex_to_dec(arg1 interface{}) interface{}
@@ -264,7 +264,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	html_escape(arg1 interface{}) interface{}
 	html_unescape(arg1 interface{}) interface{}
 	index(arg1, arg2 interface{}) interface{}
-	inflate(arg1 interface{}) interface{}
+	inflate(data string, optionalReadLimit int) string
 	ip_format(arg1, arg2 interface{}) interface{}
 	jarm(arg1 interface{}) interface{}
 	join(separator string, elements ...interface{}) string
@@ -329,7 +329,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	xor(args ...interface{}) interface{}
 	zip(file_entry string, content string, ... ) []byte
 	zlib(arg1 interface{}) interface{}
-	zlib_decode(arg1 interface{}) interface{}
+	zlib_decode(data string, optionalReadLimit int) string
 `
 
 	signatures := GetPrintableDslFunctionSignatures(true)
@@ -435,17 +435,23 @@ func TestDslExpressions(t *testing.T) {
 		`uniq("ab", "cd", "12", "34", "12", "cd")`:                []string{"ab", "cd", "12", "34"},
 		`join(" ", uniq("ab", "cd", "12", "34", "12", "cd"))`:     "ab cd 12 34",
 		`join(", ", split(hex_encode("abcdefg"), 2))`:             "61, 62, 63, 64, 65, 66, 67",
-		`json_minify("{  \"name\":  \"John Doe\",   \"foo\":  \"bar\"     }")`:     "{\"foo\":\"bar\",\"name\":\"John Doe\"}",
-		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:                 "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
-		`ip_format('127.0.0.1', '1')`:                                              "127.0.0.1",
-		`ip_format('127.0.0.1', '3')`:                                              "0177.0.0.01",
-		`ip_format('127.0.0.1', '5')`:                                              "2130706433",
-		`ip_format('127.0.1.0', '11')`:                                             "127.0.256",
-		"unpack('>I', '\xac\xd7\t\xd0')":                                           -272646673,
-		"xor('\x01\x02', '\x02\x01')":                                              []uint8([]byte{0x3, 0x3}),
-		`count("projectdiscovery", "e")`:                                           2,
-		`concat(to_title("pRoJeCt"), to_title("diScOvErY"))`:                       "ProjectDiscovery",
-		`concat(to_title("welcome "), "to", to_title(" watch"), to_title("mojo"))`: "Welcome to WatchMojo",
+		`json_minify("{  \"name\":  \"John Doe\",   \"foo\":  \"bar\"     }")`:                       "{\"foo\":\"bar\",\"name\":\"John Doe\"}",
+		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:                                   "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
+		`ip_format('127.0.0.1', '1')`:                                                                "127.0.0.1",
+		`ip_format('127.0.0.1', '3')`:                                                                "0177.0.0.01",
+		`ip_format('127.0.0.1', '5')`:                                                                "2130706433",
+		`ip_format('127.0.1.0', '11')`:                                                               "127.0.256",
+		"unpack('>I', '\xac\xd7\t\xd0')":                                                             -272646673,
+		"xor('\x01\x02', '\x02\x01')":                                                                []uint8([]byte{0x3, 0x3}),
+		`count("projectdiscovery", "e")`:                                                             2,
+		`concat(to_title("pRoJeCt"), to_title("diScOvErY"))`:                                         "ProjectDiscovery",
+		`concat(to_title("welcome "), "to", to_title(" watch"), to_title("mojo"))`:                   "Welcome to WatchMojo",
+		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"), 4)`:                           "Hell",
+		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"), 4)`:   "Hell",
+		`inflate(hex_decode("f248cdc9c907040000ffff"), 4)`:                                           "Hell",
+		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"), 100)`:                         "Hello",
+		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"), 100)`: "Hello",
+		`inflate(hex_decode("f248cdc9c907040000ffff"), 100)`:                                         "Hello",
 	}
 
 	testDslExpressions(t, dslExpressions)
