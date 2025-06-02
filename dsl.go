@@ -706,38 +706,67 @@ func init() {
 		}
 		return compiled.MatchString(toString(args[1])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("regex_all", 2, true, func(args ...interface{}) (interface{}, error) {
-		for _, arg := range toStringSlice(args[1]) {
-			compiled, err := Regex(toString(arg))
+	MustAddFunction(NewWithSingleSignature("regex_all",
+		"(pattern string, inputs ...string) bool",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) < 2 {
+				return nil, ErrInvalidDslFunction
+			}
+
+			compiled, err := regexp.Compile(toString(args[0]))
 			if err != nil {
 				return nil, err
 			}
-			if !compiled.MatchString(toString(args[0])) {
-				return false, nil
+
+			for _, arg := range args[1:] {
+				if !compiled.MatchString(toString(arg)) {
+					return false, nil
+				}
 			}
-		}
-		return false, nil
-	}))
-	MustAddFunction(NewWithPositionalArgs("regex_any", 2, true, func(args ...interface{}) (interface{}, error) {
-		for _, arg := range toStringSlice(args[1]) {
-			compiled, err := Regex(toString(arg))
+
+			return true, nil
+		}))
+	MustAddFunction(NewWithSingleSignature("regex_any",
+		"(pattern string, inputs ...string) bool",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) < 2 {
+				return nil, ErrInvalidDslFunction
+			}
+
+			pattern := toString(args[0])
+			compiled, err := regexp.Compile(pattern)
 			if err != nil {
 				return nil, err
 			}
-			if compiled.MatchString(toString(args[0])) {
-				return true, nil
+
+			for _, arg := range args[1:] {
+				if compiled.MatchString(toString(arg)) {
+					return true, nil
+				}
 			}
-		}
-		return false, nil
-	}))
-	MustAddFunction(NewWithPositionalArgs("equals_any", 2, true, func(args ...interface{}) (interface{}, error) {
-		for _, arg := range toStringSlice(args[1]) {
-			if args[0] == arg {
-				return true, nil
+
+			return false, nil
+		}))
+	MustAddFunction(NewWithSingleSignature("equals_any",
+		"(s interface{}, subs ...interface{}) bool",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) < 2 {
+				return nil, ErrInvalidDslFunction
 			}
-		}
-		return false, nil
-	}))
+
+			s := toString(args[0])
+
+			for _, arg := range args[1:] {
+				if toString(arg) == s {
+					return true, nil
+				}
+			}
+
+			return false, nil
+		}))
 	MustAddFunction(NewWithPositionalArgs("remove_bad_chars", 2, true, func(args ...interface{}) (interface{}, error) {
 		input := toString(args[0])
 		badChars := toString(args[1])

