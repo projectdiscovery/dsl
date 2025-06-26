@@ -1,17 +1,12 @@
 package dsl
 
 import (
-	"regexp"
 	"sync"
 
 	"github.com/Knetic/govaluate"
-	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
-var (
-	defaultEngine *Engine
-	RegexStore    = &mapsutil.SyncLockMap[string, *regexp.Regexp]{Map: make(mapsutil.Map[string, *regexp.Regexp])}
-)
+var defaultEngine *Engine
 
 type Engine struct {
 	HelperFunctions map[string]govaluate.ExpressionFunction
@@ -59,18 +54,4 @@ func EvalExpr(expr string, vars map[string]interface{}) (interface{}, error) {
 	}
 
 	return defaultEngine.EvalExprFromCache(expr, vars)
-}
-
-func Regex(regxp string) (*regexp.Regexp, error) {
-	if compiled, ok := RegexStore.Get(regxp); ok {
-		return compiled, nil
-	}
-
-	compiled, err := regexp.Compile(regxp)
-	if err != nil {
-		return nil, err
-	}
-	_ = RegexStore.Set(regxp, compiled)
-
-	return compiled, nil
 }

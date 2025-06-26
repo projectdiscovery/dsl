@@ -78,24 +78,6 @@ func toString(data interface{}) string {
 	}
 }
 
-func toStringSlice(v interface{}) (m []string) {
-	switch vv := v.(type) {
-	case []string:
-		for _, item := range vv {
-			m = append(m, toString(item))
-		}
-	case []int:
-		for _, item := range vv {
-			m = append(m, toString(item))
-		}
-	case []float64:
-		for _, item := range vv {
-			m = append(m, toString(item))
-		}
-	}
-	return
-}
-
 func insertInto(s string, interval int, sep rune) string {
 	var buffer bytes.Buffer
 	before := interval - 1
