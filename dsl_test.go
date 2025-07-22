@@ -297,6 +297,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	replace(arg1, arg2, arg3 interface{}) interface{}
 	replace_regex(arg1, arg2, arg3 interface{}) interface{}
 	reverse(arg1 interface{}) interface{}
+	rsa_encrypt(arg1, arg2 interface{}) interface{}
 	sha1(arg1 interface{}) interface{}
 	sha256(arg1 interface{}) interface{}
 	sha512(arg1 interface{}) interface{}
@@ -454,6 +455,15 @@ func TestDslExpressions(t *testing.T) {
 		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"), 100)`:                         "Hello",
 		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"), 100)`: "Hello",
 		`inflate(hex_decode("f248cdc9c907040000ffff"), 100)`:                                         "Hello",
+		`rsa_encrypt("plaindata", "-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtKqKDIZyXltCyLVym+VL
+N4kMQHoazrJ7G5GbOSITuFaV0lpbXTw9VmW8wkyxG0U9b5zMaIfWyF5T9DWw/AcI
+9ehszNYTy1U6KgNN94bZzILsWnQ3M7o8T9qZxITNBd/90VpW2O0ClR1z+gB4ls1C
+cSy4ym0pQ7ZKMEJbWYxFuw3CJfWAFbdXcULgqIG0K7Nh++g6v5XLRceqxOW9j9Mc
+29THVYk8uvF8gEOZBvM4RnhJhJX03ACRCHqBg4CdKaYaWIWc+eOxZrBg0iAfWpy+
+vOZml6PnbXH+Z1+yVskAoyGKnOxRSaD0DJY6xq1x3z5AoVImLsCLSkJr2D+4W+EC
+PQIDAQAB
+-----END PUBLIC KEY-----") != ""`: true,
 	}
 
 	testDslExpressions(t, dslExpressions)

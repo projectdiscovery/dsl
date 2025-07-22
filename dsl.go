@@ -11,12 +11,15 @@ import (
 	"crypto/hmac"
 	"crypto/md5"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"hash"
 	"html"
@@ -1452,6 +1455,45 @@ func init() {
 
 		return float64(mtime), nil
 	}))
+
+	MustAddFunction(NewWithPositionalArgs("rsa_encrypt",
+		2,
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) != 2 {
+				return nil, errors.New("rsa_encrypt expects 2 arguments: plaintext, pemPublicKey")
+			}
+
+			plaintext, ok1 := args[0].(string)
+			publicKeyPem, ok2 := args[1].(string)
+
+			if !ok1 || !ok2 {
+				return nil, errors.New("invalid arguments")
+			}
+
+			block, _ := pem.Decode([]byte(publicKeyPem))
+			if block == nil {
+				return nil, errors.New("invalid PEM format")
+			}
+
+			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+			if err != nil {
+				return nil, err
+			}
+
+			rsaPub, ok := pub.(*rsa.PublicKey)
+			if !ok {
+				return nil, errors.New("not an RSA public key")
+			}
+
+			ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, rsaPub, []byte(plaintext))
+			if err != nil {
+				return nil, fmt.Errorf("RSA encryption failed: %w", err)
+			}
+			return base64.StdEncoding.EncodeToString(ciphertext), nil
+		}),
+	)
+
 	DefaultHelperFunctions = HelperFunctions()
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
 }
