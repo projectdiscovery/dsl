@@ -257,6 +257,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	generate_jwt(jsonString, algorithm, optionalSignature string, optionalMaxAgeUnix interface{}) string
 	gzip(arg1 interface{}) interface{}
 	gzip_decode(data string, optionalReadLimit int) string
+	gzip_mtime(arg1 interface{}) interface{}
 	hex_decode(arg1 interface{}) interface{}
 	hex_encode(arg1 interface{}) interface{}
 	hex_to_dec(arg1 interface{}) interface{}
@@ -448,6 +449,7 @@ func TestDslExpressions(t *testing.T) {
 		`concat(to_title("welcome "), "to", to_title(" watch"), to_title("mojo"))`:                   "Welcome to WatchMojo",
 		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"), 4)`:                           "Hell",
 		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"), 4)`:   "Hell",
+		`gzip_mtime(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))`:       float64(0),
 		`inflate(hex_decode("f248cdc9c907040000ffff"), 4)`:                                           "Hell",
 		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"), 100)`:                         "Hello",
 		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"), 100)`: "Hello",
