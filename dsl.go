@@ -1432,23 +1432,26 @@ func init() {
 		}))
 
 	MustAddFunction(NewWithPositionalArgs("gzip_mtime", 1, true, func(args ...interface{}) (interface{}, error) {
-		b := []byte(toString(args[0]))
-		if len(b) < 10 {
-			return nil, errors.New("invalid gzip data: header too short (<10 bytes)")
+		if len(args) == 0 {
+			return nil, ErrInvalidDslFunction
 		}
-		// GZIP magic + CM(deflate=0x08)
-		if b[0] != 0x1f || b[1] != 0x8b {
-			return nil, errors.New("invalid gzip header: bad magic (not a gzip stream)")
-		}
-		if b[2] != 0x08 {
-			return nil, fmt.Errorf("unsupported compression method: CM=0x%02x (expect 0x08=DEFLATE)", b[2])
-		}
-		mtime := uint32(b[4]) | uint32(b[5])<<8 | uint32(b[6])<<16 | uint32(b[7])<<24
-		return float64(int64(mtime)), nil
-	}))
 
-	DefaultHelperFunctions = HelperFunctions()
-	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
+		argData := toString(args[0])
+		readLimit := DefaultMaxDecompressionSize
+
+		reader, err := gzip.NewReader(io.LimitReader(strings.NewReader(argData), readLimit))
+		if err != nil {
+			return "", err
+		}
+
+		var mtime int64
+		if !reader.Header.ModTime.IsZero() {
+			mtime = reader.Header.ModTime.Unix()
+		}
+		_ = reader.Close()
+
+		return float64(mtime), nil
+	}))
 }
 
 func NewWithSingleSignature(name, signature string, cacheable bool, logic govaluate.ExpressionFunction) dslFunction {
