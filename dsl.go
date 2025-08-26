@@ -1431,6 +1431,27 @@ func init() {
 			return cases.Title(lang).String(s), nil
 		}))
 
+	MustAddFunction(NewWithPositionalArgs("gzip_mtime", 1, true, func(args ...interface{}) (interface{}, error) {
+		if len(args) == 0 {
+			return nil, ErrInvalidDslFunction
+		}
+
+		argData := toString(args[0])
+		readLimit := DefaultMaxDecompressionSize
+
+		reader, err := gzip.NewReader(io.LimitReader(strings.NewReader(argData), readLimit))
+		if err != nil {
+			return "", err
+		}
+
+		var mtime int64
+		if !reader.Header.ModTime.IsZero() {
+			mtime = reader.Header.ModTime.Unix()
+		}
+		_ = reader.Close()
+
+		return float64(mtime), nil
+	}))
 	DefaultHelperFunctions = HelperFunctions()
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
 }
