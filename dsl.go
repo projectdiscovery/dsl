@@ -1452,6 +1452,8 @@ func init() {
 
 		return float64(mtime), nil
 	}))
+	DefaultHelperFunctions = HelperFunctions()
+	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
 }
 
 func NewWithSingleSignature(name, signature string, cacheable bool, logic govaluate.ExpressionFunction) dslFunction {
