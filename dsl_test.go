@@ -247,6 +247,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	contains(arg1, arg2 interface{}) interface{}
 	contains_all(body interface{}, substrs ...string) bool
 	contains_any(body interface{}, substrs ...string) bool
+	cookie_unsign(s string) string
 	count(str, substr string) int
 	date_time(dateTimeFormat string, optionalUnixTime interface{}) string
 	dec_to_hex(arg1 interface{}) interface{}
@@ -436,24 +437,25 @@ func TestDslExpressions(t *testing.T) {
 		`uniq("ab", "cd", "12", "34", "12", "cd")`:                []string{"ab", "cd", "12", "34"},
 		`join(" ", uniq("ab", "cd", "12", "34", "12", "cd"))`:     "ab cd 12 34",
 		`join(", ", split(hex_encode("abcdefg"), 2))`:             "61, 62, 63, 64, 65, 66, 67",
-		`json_minify("{  \"name\":  \"John Doe\",   \"foo\":  \"bar\"     }")`:                       "{\"foo\":\"bar\",\"name\":\"John Doe\"}",
-		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:                                   "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
-		`ip_format('127.0.0.1', '1')`:                                                                "127.0.0.1",
-		`ip_format('127.0.0.1', '3')`:                                                                "0177.0.0.01",
-		`ip_format('127.0.0.1', '5')`:                                                                "2130706433",
-		`ip_format('127.0.1.0', '11')`:                                                               "127.0.256",
-		"unpack('>I', '\xac\xd7\t\xd0')":                                                             -272646673,
-		"xor('\x01\x02', '\x02\x01')":                                                                []uint8([]byte{0x3, 0x3}),
-		`count("projectdiscovery", "e")`:                                                             2,
-		`concat(to_title("pRoJeCt"), to_title("diScOvErY"))`:                                         "ProjectDiscovery",
-		`concat(to_title("welcome "), "to", to_title(" watch"), to_title("mojo"))`:                   "Welcome to WatchMojo",
-		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"), 4)`:                           "Hell",
-		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"), 4)`:   "Hell",
-		`gzip_mtime(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))`:       float64(0),
-		`inflate(hex_decode("f248cdc9c907040000ffff"), 4)`:                                           "Hell",
-		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"), 100)`:                         "Hello",
-		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"), 100)`: "Hello",
-		`inflate(hex_decode("f248cdc9c907040000ffff"), 100)`:                                         "Hello",
+		`json_minify("{  \"name\":  \"John Doe\",   \"foo\":  \"bar\"     }")`:                                   "{\"foo\":\"bar\",\"name\":\"John Doe\"}",
+		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:                                               "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
+		`ip_format('127.0.0.1', '1')`:                                                                            "127.0.0.1",
+		`ip_format('127.0.0.1', '3')`:                                                                            "0177.0.0.01",
+		`ip_format('127.0.0.1', '5')`:                                                                            "2130706433",
+		`ip_format('127.0.1.0', '11')`:                                                                           "127.0.256",
+		"unpack('>I', '\xac\xd7\t\xd0')":                                                                         -272646673,
+		"xor('\x01\x02', '\x02\x01')":                                                                            []uint8([]byte{0x3, 0x3}),
+		`count("projectdiscovery", "e")`:                                                                         2,
+		`concat(to_title("pRoJeCt"), to_title("diScOvErY"))`:                                                     "ProjectDiscovery",
+		`concat(to_title("welcome "), "to", to_title(" watch"), to_title("mojo"))`:                               "Welcome to WatchMojo",
+		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"), 4)`:                                       "Hell",
+		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"), 4)`:               "Hell",
+		`gzip_mtime(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))`:                   float64(0),
+		`inflate(hex_decode("f248cdc9c907040000ffff"), 4)`:                                                       "Hell",
+		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"), 100)`:                                     "Hello",
+		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"), 100)`:             "Hello",
+		`inflate(hex_decode("f248cdc9c907040000ffff"), 100)`:                                                     "Hello",
+		`cookie_unsign("gAJ9cQFYCgAAAHRlc3Rjb29raWVxAlgGAAAAd29ya2VkcQNzLg:1mgnkC:z5yDxzI06qYVAU3bkLaWYpADT4I")`: "changeme",
 	}
 
 	testDslExpressions(t, dslExpressions)

@@ -34,6 +34,7 @@ import (
 	"github.com/Mzack9999/gcache"
 	"github.com/asaskevich/govalidator"
 	"github.com/hashicorp/go-version"
+	"github.com/iangcarroll/cookiemonster/pkg/monster"
 	"github.com/kataras/jwt"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/dsl/deserialization"
@@ -1429,7 +1430,35 @@ func init() {
 			}
 
 			return cases.Title(lang).String(s), nil
-		}))
+		},
+	))
+
+	MustAddFunction(NewWithSingleSignature("cookie_unsign",
+		"(s string) string", false,
+		func(args ...interface{}) (interface{}, error) {
+			argSize := len(args)
+			if argSize < 1 {
+				return nil, ErrInvalidDslFunction
+			}
+			s := toString(args[0])
+
+			wl := monster.NewWordlist()
+			if err := wl.LoadDefault(); err != nil {
+				return s, errors.New("could not load default wordlist")
+			}
+
+			c := monster.NewCookie(s)
+			if !c.Decode() {
+				return s, errors.New("could not decode cookie")
+			}
+
+			if cookie, ok := c.Unsign(wl, 100); ok {
+				return string(cookie), nil
+			}
+
+			return s, errors.New("could not unsign cookie")
+		},
+	))
 
 	MustAddFunction(NewWithPositionalArgs("gzip_mtime", 1, true, func(args ...interface{}) (interface{}, error) {
 		if len(args) == 0 {
