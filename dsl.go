@@ -677,10 +677,10 @@ func init() {
 		true,
 		func(arguments ...interface{}) (interface{}, error) {
 			argumentsSize := len(arguments)
-			switch argumentsSize {
-			case 2:
+			switch {
+			case argumentsSize < 2:
 				return nil, ErrInvalidDslFunction
-			case 3:
+			case argumentsSize == 2:
 				separator := toString(arguments[0])
 				elements, ok := arguments[1].([]string)
 
