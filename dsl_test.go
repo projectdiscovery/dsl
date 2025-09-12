@@ -247,6 +247,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	contains(arg1, arg2 interface{}) interface{}
 	contains_all(body interface{}, substrs ...string) bool
 	contains_any(body interface{}, substrs ...string) bool
+	cookie_unsign(s string) string
 	count(str, substr string) int
 	date_time(dateTimeFormat string, optionalUnixTime interface{}) string
 	dec_to_hex(arg1 interface{}) interface{}
@@ -464,6 +465,7 @@ cSy4ym0pQ7ZKMEJbWYxFuw3CJfWAFbdXcULgqIG0K7Nh++g6v5XLRceqxOW9j9Mc
 vOZml6PnbXH+Z1+yVskAoyGKnOxRSaD0DJY6xq1x3z5AoVImLsCLSkJr2D+4W+EC
 PQIDAQAB
 -----END PUBLIC KEY-----") != ""`: true,
+		`cookie_unsign("gAJ9cQFYCgAAAHRlc3Rjb29raWVxAlgGAAAAd29ya2VkcQNzLg:1mgnkC:z5yDxzI06qYVAU3bkLaWYpADT4I")`: "changeme",
 	}
 
 	testDslExpressions(t, dslExpressions)
