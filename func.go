@@ -139,7 +139,7 @@ func (d dslFunction) hash(args ...interface{}) string {
 			binary.LittleEndian.PutUint64(b[:], math.Float64bits(v))
 			_, _ = hasher.Write(b[:])
 		default:
-			_, _ = hasher.Write([]byte(fmt.Sprintf("%v", v)))
+			_, _ = fmt.Fprintf(hasher, "%v", v)
 		}
 
 		if i < len(args)-1 {
