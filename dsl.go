@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"hash"
 	"html"
@@ -46,7 +47,7 @@ import (
 	"github.com/projectdiscovery/gostruct"
 	"github.com/projectdiscovery/mapcidr"
 	jarm "github.com/projectdiscovery/utils/crypto/jarm"
-	errors "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	maputils "github.com/projectdiscovery/utils/maps"
 	randint "github.com/projectdiscovery/utils/rand"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -67,7 +68,7 @@ var (
 
 	// ErrParsingArg is error when parsing value of argument
 	// Use With Caution: Nuclei ignores this error in extractors(ref: https://github.com/projectdiscovery/nuclei/issues/3950)
-	ErrParsingArg = errors.New("error parsing argument value")
+	ErrParsingArg = errkit.New("error parsing argument value")
 
 	DefaultMaxDecompressionSize = int64(10 * 1024 * 1024) // 10MB
 	DefaultCacheSize            = 6144
@@ -81,7 +82,7 @@ var functions []dslFunction
 func AddFunction(function dslFunction) error {
 	for _, f := range functions {
 		if function.Name == f.Name {
-			return errors.New("duplicate helper function key defined")
+			return errkit.New("duplicate helper function key defined")
 		}
 	}
 	functions = append(functions, function)
@@ -147,15 +148,16 @@ func init() {
 		true,
 		func(args ...interface{}) (interface{}, error) {
 			argCount := len(args)
-			if argCount == 0 {
+			switch argCount {
+			case 0:
 				return nil, ErrInvalidDslFunction
-			} else if argCount == 1 {
+			case 1:
 				runes := []rune(toString(args[0]))
 				sort.Slice(runes, func(i int, j int) bool {
 					return runes[i] < runes[j]
 				})
 				return string(runes), nil
-			} else {
+			default:
 				tokens := make([]string, 0, argCount)
 				for _, arg := range args {
 					tokens = append(tokens, toString(arg))
@@ -208,9 +210,10 @@ func init() {
 		true,
 		func(args ...interface{}) (interface{}, error) {
 			argCount := len(args)
-			if argCount == 0 {
+			switch argCount {
+			case 0:
 				return nil, ErrInvalidDslFunction
-			} else if argCount == 1 {
+			case 1:
 				builder := &strings.Builder{}
 				visited := make(map[rune]struct{})
 				for _, i := range toString(args[0]) {
@@ -220,7 +223,7 @@ func init() {
 					}
 				}
 				return builder.String(), nil
-			} else {
+			default:
 				result := make([]string, 0, argCount)
 				visited := make(map[string]struct{})
 				for _, i := range args[0:] {
@@ -543,7 +546,7 @@ func init() {
 	}))
 	MustAddFunction(NewWithPositionalArgs("mmh3", 1, true, func(args ...interface{}) (interface{}, error) {
 		hasher := murmur3.New32WithSeed(0)
-		hasher.Write([]byte(fmt.Sprint(args[0])))
+		hasher.Write([]byte(fmt.Sprint(args[0]))) //nolint
 		return fmt.Sprintf("%d", int32(hasher.Sum32())), nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("contains", 2, true, func(args ...interface{}) (interface{}, error) {
@@ -649,16 +652,17 @@ func init() {
 		true,
 		func(arguments ...interface{}) (interface{}, error) {
 			argumentsSize := len(arguments)
-			if argumentsSize == 2 {
+			switch argumentsSize {
+			case 2:
 				input := toString(arguments[0])
 				separatorOrCount := toString(arguments[1])
 
 				count, err := strconv.Atoi(separatorOrCount)
 				if err != nil {
-					return strings.SplitN(input, separatorOrCount, -1), nil
+					return strings.Split(input, separatorOrCount), nil
 				}
 				return toChunks(input, count), nil
-			} else if argumentsSize == 3 {
+			case 3:
 				input := toString(arguments[0])
 				separator := toString(arguments[1])
 				count, err := strconv.Atoi(toString(arguments[2]))
@@ -666,7 +670,7 @@ func init() {
 					return nil, ErrInvalidDslFunction
 				}
 				return strings.SplitN(input, separator, count), nil
-			} else {
+			default:
 				return nil, ErrInvalidDslFunction
 			}
 		}))
@@ -676,25 +680,26 @@ func init() {
 		true,
 		func(arguments ...interface{}) (interface{}, error) {
 			argumentsSize := len(arguments)
-			if argumentsSize < 2 {
+			switch {
+			case argumentsSize < 2:
 				return nil, ErrInvalidDslFunction
-			} else if argumentsSize == 2 {
+			case argumentsSize == 2:
 				separator := toString(arguments[0])
 				elements, ok := arguments[1].([]string)
 
 				if !ok {
-					return nil, errors.New("cannot cast elements into string")
+					return nil, errkit.New("cannot cast elements into string")
 				}
 
 				return strings.Join(elements, separator), nil
-			} else {
+			default:
 				separator := toString(arguments[0])
 				elements := arguments[1:argumentsSize]
 
 				stringElements := make([]string, 0, argumentsSize)
 				for _, element := range elements {
 					if _, ok := element.([]string); ok {
-						return nil, errors.New("cannot use join on more than one slice element")
+						return nil, errkit.New("cannot use join on more than one slice element")
 					}
 
 					stringElements = append(stringElements, toString(element))
@@ -985,7 +990,7 @@ func init() {
 
 			firstParsed, parseErr := version.NewVersion(toString(args[0]))
 			if parseErr != nil {
-				return nil, errors.NewWithErr(ErrParsingArg).Wrap(parseErr)
+				return nil, errkit.Combine(ErrParsingArg, parseErr)
 			}
 
 			var versionConstraints []string
@@ -1016,11 +1021,11 @@ func init() {
 			bLen = int(floatVal)
 		}
 		if bLen == 0 {
-			return nil, errors.New("invalid padding length")
+			return nil, errkit.New("invalid padding length")
 		}
 		bByte := []byte(toString(args[1]))
 		if len(bByte) == 0 {
-			return nil, errors.New("invalid padding byte")
+			return nil, errkit.New("invalid padding byte")
 		}
 		bData := []byte(toString(args[0]))
 		dataLen := len(bData)
@@ -1030,7 +1035,7 @@ func init() {
 
 		padMode, ok := args[3].(string)
 		if !ok || (padMode != "prefix" && padMode != "suffix") {
-			return nil, errors.New("padding mode must be 'prefix' or 'suffix'")
+			return nil, errkit.New("padding mode must be 'prefix' or 'suffix'")
 		}
 
 		paddingLen := bLen - dataLen
@@ -1101,14 +1106,14 @@ func init() {
 			}
 			argStr := toString(args[0])
 			if len(argStr) == 0 {
-				return nil, errors.New("empty string")
+				return nil, errkit.New("empty string")
 			}
 			start, err := strconv.Atoi(toString(args[1]))
 			if err != nil {
-				return nil, errors.NewWithErr(err).Msgf("invalid start position")
+				return nil, errkit.Wrap(err, "invalid start position")
 			}
 			if start > len(argStr) {
-				return nil, errors.New("start position bigger than slice length")
+				return nil, errkit.New("start position bigger than slice length")
 			}
 			if len(args) == 2 {
 				return argStr[start:], nil
@@ -1116,16 +1121,16 @@ func init() {
 
 			end, err := strconv.Atoi(toString(args[2]))
 			if err != nil {
-				return nil, errors.New("invalid end position")
+				return nil, errkit.New("invalid end position")
 			}
 			if end < 0 {
-				return nil, errors.New("negative end position")
+				return nil, errkit.New("negative end position")
 			}
 			if end < start {
-				return nil, errors.New("end position before start")
+				return nil, errkit.New("end position before start")
 			}
 			if end > len(argStr) {
-				return nil, errors.New("end position bigger than slice length start")
+				return nil, errkit.New("end position bigger than slice length start")
 			}
 			return argStr[start:end], nil
 		}))
@@ -1448,8 +1453,8 @@ func init() {
 		}
 
 		var mtime int64
-		if !reader.Header.ModTime.IsZero() {
-			mtime = reader.Header.ModTime.Unix()
+		if !reader.ModTime.IsZero() {
+			mtime = reader.ModTime.Unix()
 		}
 		_ = reader.Close()
 
