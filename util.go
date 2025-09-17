@@ -13,6 +13,7 @@ import (
 
 	"github.com/kataras/jwt"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/utils/html"
 	randint "github.com/projectdiscovery/utils/rand"
 )
 
@@ -75,6 +76,34 @@ func toString(data interface{}) string {
 		return s.Error()
 	default:
 		return fmt.Sprintf("%v", data)
+	}
+}
+
+// toBool converts an interface to boolean in a quick way
+func toBool(data interface{}) bool {
+	switch s := data.(type) {
+	case nil:
+		return false
+	case bool:
+		return s
+	case string:
+		if s == "" {
+			return false
+		}
+		// Try parsing as boolean first
+		if b, err := strconv.ParseBool(s); err == nil {
+			return b
+		}
+		// Non-empty strings are considered true
+		return true
+	case int, int8, int16, int32, int64:
+		return s != 0
+	case uint, uint8, uint16, uint32, uint64:
+		return s != 0
+	case float32, float64:
+		return s != 0
+	default:
+		return false
 	}
 }
 
@@ -251,4 +280,30 @@ func aggregate(values []string) string {
 		builder.WriteRune('\n')
 	}
 	return builder.String()
+}
+
+// strToNumEntities applies HTML escaping, then converts non-HTML-entity
+// characters to numeric entities.
+func strToNumEntities(s string) string {
+	escaped := html.EscapeString(s)
+
+	var result strings.Builder
+	i := 0
+	for i < len(escaped) {
+		if escaped[i] == '&' {
+			semicolonPos := strings.Index(escaped[i:], ";")
+			if semicolonPos != -1 {
+				entityEnd := i + semicolonPos + 1
+				result.WriteString(escaped[i:entityEnd])
+				i = entityEnd
+				continue
+			}
+		}
+
+		r := rune(escaped[i])
+		result.WriteString(fmt.Sprintf("&#%d;", int(r)))
+		i++
+	}
+
+	return result.String()
 }
