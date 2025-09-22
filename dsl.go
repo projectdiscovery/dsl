@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"html"
 	"io"
 	"math"
 	"net"
@@ -49,6 +48,7 @@ import (
 	"github.com/projectdiscovery/mapcidr"
 	jarm "github.com/projectdiscovery/utils/crypto/jarm"
 	"github.com/projectdiscovery/utils/errkit"
+	"github.com/projectdiscovery/utils/html"
 	maputils "github.com/projectdiscovery/utils/maps"
 	randint "github.com/projectdiscovery/utils/rand"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -527,9 +527,20 @@ func init() {
 		h.Write([]byte(data))
 		return hex.EncodeToString(h.Sum(nil)), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("html_escape", 1, true, func(args ...interface{}) (interface{}, error) {
-		return html.EscapeString(toString(args[0])), nil
-	}))
+	MustAddFunction(NewWithSingleSignature("html_escape",
+		"(s string, optionalConvertAllChars bool) string",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			s := toString(args[0])
+			if len(args) > 1 {
+				convertAllChars := toBool(args[1])
+				if convertAllChars {
+					return strToNumEntities(s), nil
+				}
+			}
+
+			return html.EscapeString(s), nil
+		}))
 	MustAddFunction(NewWithPositionalArgs("html_unescape", 1, true, func(args ...interface{}) (interface{}, error) {
 		return html.UnescapeString(toString(args[0])), nil
 	}))
@@ -1081,6 +1092,9 @@ func init() {
 	}))
 	MustAddFunction(NewWithPositionalArgs("to_string", 1, true, func(args ...interface{}) (interface{}, error) {
 		return toString(args[0]), nil
+	}))
+	MustAddFunction(NewWithPositionalArgs("to_bool", 1, true, func(args ...interface{}) (interface{}, error) {
+		return toBool(args[0]), nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("dec_to_hex", 1, true, func(args ...interface{}) (interface{}, error) {
 		if number, ok := args[0].(float64); ok {
