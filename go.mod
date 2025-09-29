@@ -14,10 +14,10 @@ require (
 	github.com/projectdiscovery/gologger v1.1.56
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/mapcidr v1.1.34
-	github.com/projectdiscovery/utils v0.5.0
+	github.com/projectdiscovery/utils v0.6.0
 	github.com/sashabaranov/go-openai v1.37.0
 	github.com/spaolacci/murmur3 v1.1.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	golang.org/x/text v0.24.0
 )
