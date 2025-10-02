@@ -22,10 +22,6 @@ require (
 	golang.org/x/text v0.24.0
 )
 
-replace (
-	github.com/projectdiscovery/utils => /home/dw1/Development/PD/utils
-)
-
 require (
 	github.com/STARRY-S/zip v0.2.1 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
