@@ -87,21 +87,52 @@ func toBool(data interface{}) bool {
 	case bool:
 		return s
 	case string:
+		s = strings.TrimSpace(s)
+		if s == "true" {
+			return true
+		}
+
 		if s == "" {
 			return false
 		}
-		// Try parsing as boolean first
+
 		if b, err := strconv.ParseBool(s); err == nil {
 			return b
 		}
-		// Non-empty strings are considered true
-		return true
-	case int, int8, int16, int32, int64:
-		return s != 0
-	case uint, uint8, uint16, uint32, uint64:
-		return s != 0
-	case float32, float64:
-		return s != 0
+
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			return f == 1
+		}
+
+		if i, err := strconv.ParseInt(s, 10, 64); err == nil {
+			return i == 1
+		}
+
+		return false
+	case int:
+		return s == 1
+	case int8:
+		return s == 1
+	case int16:
+		return s == 1
+	case int32:
+		return s == 1
+	case int64:
+		return s == 1
+	case uint:
+		return s == 1
+	case uint8:
+		return s == 1
+	case uint16:
+		return s == 1
+	case uint32:
+		return s == 1
+	case uint64:
+		return s == 1
+	case float32:
+		return s == 1
+	case float64:
+		return s == 1
 	default:
 		return false
 	}

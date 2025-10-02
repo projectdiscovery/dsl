@@ -309,6 +309,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	split(input string, separator string, optionalChunkSize) []string
 	starts_with(str string, prefix ...string) bool
 	substr(str string, start int, optionalEnd int)
+	to_bool(arg1 interface{}) interface{}
 	to_lower(arg1 interface{}) interface{}
 	to_number(arg1 interface{}) interface{}
 	to_string(arg1 interface{}) interface{}
@@ -370,6 +371,13 @@ func TestDslExpressions(t *testing.T) {
 		`sha1("Hello")`:                           "f7ff9e8b7bb2e09b70935a5d785e0cc5d9d0abf0",
 		`sha256("Hello")`:                         "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969",
 		`sha512("Hello")`:                         "3615f80c9d293ed7402687f94b22d58e529b8cc7916f8fac7fddf7fbd5af4cf777d3d795a7a00a16bf7e7f3fb9561ee9baae480da9fe7a18769e71886b03f315",
+		`to_bool(1)`:                              true,
+		`to_bool("1")`:                            true,
+		`to_bool("true")`:                         true,
+		`to_bool("TrUe")`:                         false,
+		`to_bool("0")`:                            false,
+		`to_bool(0)`:                              false,
+		`to_bool("x")`:                            false,
 		`to_lower("HELLO")`:                       "hello",
 		`to_upper("hello")`:                       "HELLO",
 		`trim("aaaHelloddd", "ad")`:               "Hello",
