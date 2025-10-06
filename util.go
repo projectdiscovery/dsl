@@ -13,6 +13,7 @@ import (
 
 	"github.com/kataras/jwt"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/utils/html"
 	randint "github.com/projectdiscovery/utils/rand"
 )
 
@@ -75,6 +76,65 @@ func toString(data interface{}) string {
 		return s.Error()
 	default:
 		return fmt.Sprintf("%v", data)
+	}
+}
+
+// toBool converts an interface to boolean in a quick way
+func toBool(data interface{}) bool {
+	switch s := data.(type) {
+	case nil:
+		return false
+	case bool:
+		return s
+	case string:
+		s = strings.TrimSpace(s)
+		if s == "true" {
+			return true
+		}
+
+		if s == "" {
+			return false
+		}
+
+		if b, err := strconv.ParseBool(s); err == nil {
+			return b
+		}
+
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			return f == 1
+		}
+
+		if i, err := strconv.ParseInt(s, 10, 64); err == nil {
+			return i == 1
+		}
+
+		return false
+	case int:
+		return s == 1
+	case int8:
+		return s == 1
+	case int16:
+		return s == 1
+	case int32:
+		return s == 1
+	case int64:
+		return s == 1
+	case uint:
+		return s == 1
+	case uint8:
+		return s == 1
+	case uint16:
+		return s == 1
+	case uint32:
+		return s == 1
+	case uint64:
+		return s == 1
+	case float32:
+		return s == 1
+	case float64:
+		return s == 1
+	default:
+		return false
 	}
 }
 
@@ -251,4 +311,30 @@ func aggregate(values []string) string {
 		builder.WriteRune('\n')
 	}
 	return builder.String()
+}
+
+// strToNumEntities applies HTML escaping, then converts non-HTML-entity
+// characters to numeric entities.
+func strToNumEntities(s string) string {
+	escaped := html.EscapeString(s)
+
+	var result strings.Builder
+	i := 0
+	for i < len(escaped) {
+		if escaped[i] == '&' {
+			semicolonPos := strings.Index(escaped[i:], ";")
+			if semicolonPos != -1 {
+				entityEnd := i + semicolonPos + 1
+				result.WriteString(escaped[i:entityEnd])
+				i = entityEnd
+				continue
+			}
+		}
+
+		r := rune(escaped[i])
+		result.WriteString(fmt.Sprintf("&#%d;", int(r)))
+		i++
+	}
+
+	return result.String()
 }
