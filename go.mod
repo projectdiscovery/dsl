@@ -11,7 +11,7 @@ require (
 	github.com/kataras/jwt v0.1.8
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/gologger v1.1.56
+	github.com/projectdiscovery/gologger v1.1.57
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/mapcidr v1.1.95
 	github.com/projectdiscovery/utils v0.6.0
