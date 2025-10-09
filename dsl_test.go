@@ -999,7 +999,7 @@ func testDslExpressions(t *testing.T, dslExpressions map[string]interface{}) {
 }
 
 func Test_GetPrintableDslFunctionSignatures(t *testing.T) {
-	fmt.Printf(GetPrintableDslFunctionSignatures(true))
+	fmt.Print(GetPrintableDslFunctionSignatures(true))
 }
 
 func Test_Zlib_decompression_bomb(t *testing.T) {
