@@ -6,6 +6,8 @@ require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
+	github.com/brianvoe/gofakeit/v7 v7.2.1
+	github.com/gosimple/slug v1.15.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/iangcarroll/cookiemonster v1.6.0
 	github.com/kataras/jwt v0.1.8
@@ -32,6 +34,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
+	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect

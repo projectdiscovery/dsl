@@ -36,6 +36,8 @@ import (
 	"github.com/Knetic/govaluate"
 	"github.com/Mzack9999/gcache"
 	"github.com/asaskevich/govalidator"
+	"github.com/brianvoe/gofakeit/v7"
+	"github.com/gosimple/slug"
 	"github.com/hashicorp/go-version"
 	"github.com/iangcarroll/cookiemonster/pkg/monster"
 	"github.com/kataras/jwt"
@@ -71,22 +73,38 @@ var (
 	// Use With Caution: Nuclei ignores this error in extractors(ref: https://github.com/projectdiscovery/nuclei/issues/3950)
 	ErrParsingArg = errkit.New("error parsing argument value")
 
+	errDuplicateFunc = errors.New("duplicate function")
+
 	DefaultMaxDecompressionSize = int64(10 * 1024 * 1024) // 10MB
 	DefaultCacheSize            = 6144
 	resultCache                 = gcache.New[string, interface{}](DefaultCacheSize).Build()
+
+	// Initialize faker functions
+	faker = gofakeit.New(0)
 )
 
 var PrintDebugCallback func(args ...interface{}) error
 
 var functions []dslFunction
+var fakerFunctions []dslFunction
 
 func AddFunction(function dslFunction) error {
 	for _, f := range functions {
 		if function.Name == f.Name {
-			return errkit.New("duplicate helper function key defined")
+			return errkit.Wrapf(errDuplicateFunc, "duplicate helper function key: %q", f.Name)
 		}
 	}
 	functions = append(functions, function)
+	return nil
+}
+
+func addFakerFunction(function dslFunction) error {
+	for _, f := range functions {
+		if function.Name == f.Name {
+			return fmt.Errorf("%w: %q", errDuplicateFunc, f.Name)
+		}
+	}
+	fakerFunctions = append(fakerFunctions, function)
 	return nil
 }
 
@@ -1546,6 +1564,15 @@ func init() {
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
 }
 
+// Helper function to generate function signatures for faker functions
+func getFakerSignature(info gofakeit.Info) string {
+	var params []string
+	for _, p := range info.Params {
+		params = append(params, fmt.Sprintf("%s %s", p.Field, p.Type))
+	}
+	return fmt.Sprintf("(%s) %s", strings.Join(params, ", "), info.Output)
+}
+
 func NewWithSingleSignature(name, signature string, cacheable bool, logic govaluate.ExpressionFunction) dslFunction {
 	return NewWithMultipleSignatures(name, []string{signature}, cacheable, logic)
 }
@@ -1569,6 +1596,80 @@ func NewWithPositionalArgs(name string, numberOfArgs int, cacheable bool, expr g
 		IsCacheable:        cacheable,
 	}
 	return function
+}
+
+// FakerFunctions returns the faker functions
+//
+// Note: It does not support backwards compatibility for function names
+func FakerFunctions() map[string]govaluate.ExpressionFunction {
+	funcs := make(map[string]govaluate.ExpressionFunction)
+	slug.CustomSub = map[string]string{" ": "_"}
+
+	for _, fInfo := range gofakeit.FuncLookups {
+		// NOTE(dwisiswant0): Skipping function because it not callable or the
+		// output is not printable.
+		hasSliceParam := false
+		for _, p := range fInfo.Params {
+			if strings.Contains(p.Type, "[]") {
+				hasSliceParam = true
+				break
+			}
+		}
+		if hasSliceParam {
+			continue
+		}
+		if strings.Contains(fInfo.Output, "map") {
+			continue
+		}
+
+		funcName := "rand_" + slug.Make(fInfo.Display)
+		fakerFunc := func(fInfo gofakeit.Info) func(args ...any) (any, error) {
+			return func(args ...any) (any, error) {
+				// Set function and params
+				// Copied from: https://github.com/brianvoe/gofakeit/blob/e7c55ca0031ef39bb7673deedfc9f04fc17d8072/cmd/gofakeit/gofakeit.go#L112
+				params := gofakeit.NewMapParams()
+				paramsLen := len(fInfo.Params)
+				argsLen := len(args)
+				if argsLen != paramsLen {
+					return nil, fmt.Errorf("expected %d arguments, got %d", paramsLen, argsLen)
+				}
+
+				if paramsLen > 0 {
+					for i := 0; i < argsLen; i++ {
+						if i == 0 {
+							continue
+						}
+
+						// Map argument to param field
+						if paramsLen >= i {
+							p := fInfo.Params[i-1]
+							arg := fmt.Sprintf("%v", args[i])
+							params.Add(p.Field, arg)
+						}
+					}
+				}
+
+				value, err := fInfo.Generate(faker, params, &fInfo)
+				if err != nil {
+					return "", fmt.Errorf("faker error: %w", err)
+				}
+
+				return value, nil
+			}
+		}
+
+		// Register the function with the DSL
+		f := fakerFunc(fInfo)
+		err := addFakerFunction(NewWithSingleSignature(
+			funcName, getFakerSignature(fInfo), false, f,
+		))
+		if err != nil && !errors.Is(err, errDuplicateFunc) {
+			panic(fmt.Errorf("%w (faker)", err))
+		}
+		funcs[funcName] = f
+	}
+
+	return funcs
 }
 
 // HelperFunctions returns the dsl helper functions
@@ -1595,23 +1696,37 @@ func GetFunctionNames(heperFunctions map[string]govaluate.ExpressionFunction) []
 	return maputils.GetKeys(heperFunctions)
 }
 
+// GetPrintableDslFunctionSignatures returns the function signatures for the
+// default DSL functions
 func GetPrintableDslFunctionSignatures(noColor bool) string {
 	if noColor {
-		return aggregate(getDslFunctionSignatures())
+		return aggregate(getDslFunctionSignatures(functions))
 	}
-	return aggregate(colorizeDslFunctionSignatures())
+	return aggregate(colorizeDslFunctionSignatures(functions))
 }
 
-func getDslFunctionSignatures() []string {
+// GetPrintableFakerDslFunctionSignatures returns the function signatures for
+// the faker functions.
+//
+// Note: [FakerFunctions] must be called first to populate the functions
+// map with the faker functions.
+func GetPrintableFakerDslFunctionSignatures(noColor bool) string {
+	if noColor {
+		return aggregate(getDslFunctionSignatures(fakerFunctions))
+	}
+	return aggregate(colorizeDslFunctionSignatures(fakerFunctions))
+}
+
+func getDslFunctionSignatures(funcs []dslFunction) []string {
 	var result []string
-	for _, function := range functions {
-		result = append(result, function.GetSignatures()...)
+	for _, f := range funcs {
+		result = append(result, f.GetSignatures()...)
 	}
 	return result
 }
 
-func colorizeDslFunctionSignatures() []string {
-	signatures := getDslFunctionSignatures()
+func colorizeDslFunctionSignatures(funcs []dslFunction) []string {
+	signatures := getDslFunctionSignatures(funcs)
 
 	colorToOrange := func(value string) string {
 		return aurora.Index(208, value).String()
