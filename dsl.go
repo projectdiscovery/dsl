@@ -11,20 +11,21 @@ import (
 	"crypto/hmac"
 	"crypto/md5"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"hash"
-	"html"
 	"io"
 	"math"
 	"net"
-	"net/url"
 	"reflect"
 	"regexp"
 	"sort"
@@ -38,6 +39,7 @@ import (
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/gosimple/slug"
 	"github.com/hashicorp/go-version"
+	"github.com/iangcarroll/cookiemonster/pkg/monster"
 	"github.com/kataras/jwt"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/dsl/deserialization"
@@ -47,7 +49,8 @@ import (
 	"github.com/projectdiscovery/gostruct"
 	"github.com/projectdiscovery/mapcidr"
 	jarm "github.com/projectdiscovery/utils/crypto/jarm"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
+	"github.com/projectdiscovery/utils/html"
 	maputils "github.com/projectdiscovery/utils/maps"
 	randint "github.com/projectdiscovery/utils/rand"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -68,13 +71,13 @@ var (
 
 	// ErrParsingArg is error when parsing value of argument
 	// Use With Caution: Nuclei ignores this error in extractors(ref: https://github.com/projectdiscovery/nuclei/issues/3950)
-	ErrParsingArg = errors.New("error parsing argument value")
+	ErrParsingArg = errkit.New("error parsing argument value")
 
 	errDuplicateFunc = errors.New("duplicate function")
 
-	DefaultMaxDecompressionSize                                   = int64(10 * 1024 * 1024) // 10MB
-	DefaultCacheSize                                              = 250
-	resultCache                 gcache.Cache[string, interface{}] = gcache.New[string, interface{}](DefaultCacheSize).Build()
+	DefaultMaxDecompressionSize = int64(10 * 1024 * 1024) // 10MB
+	DefaultCacheSize            = 6144
+	resultCache                 = gcache.New[string, interface{}](DefaultCacheSize).Build()
 
 	// Initialize faker functions
 	faker = gofakeit.New(0)
@@ -88,7 +91,7 @@ var fakerFunctions []dslFunction
 func AddFunction(function dslFunction) error {
 	for _, f := range functions {
 		if function.Name == f.Name {
-			return fmt.Errorf("%w: %q", errDuplicateFunc, f.Name)
+			return errkit.Wrapf(errDuplicateFunc, "duplicate helper function key: %q", f.Name)
 		}
 	}
 	functions = append(functions, function)
@@ -113,7 +116,7 @@ func MustAddFunction(function dslFunction) {
 
 func init() {
 	// note: index helper is zero based
-	MustAddFunction(NewWithPositionalArgs("index", 2, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("index", 2, true, func(args ...interface{}) (interface{}, error) {
 		index, err := strconv.ParseInt(toString(args[1]), 10, 64)
 		if err != nil {
 			return nil, err
@@ -137,7 +140,7 @@ func init() {
 		}
 	}))
 
-	MustAddFunction(NewWithPositionalArgs("len", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("len", 1, true, func(args ...interface{}) (interface{}, error) {
 		var length int
 		value := reflect.ValueOf(args[0])
 		switch value.Kind() {
@@ -151,28 +154,29 @@ func init() {
 		return float64(length), nil
 	}))
 
-	MustAddFunction(NewWithPositionalArgs("to_upper", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("to_upper", 1, true, func(args ...interface{}) (interface{}, error) {
 		return strings.ToUpper(toString(args[0])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("to_lower", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("to_lower", 1, true, func(args ...interface{}) (interface{}, error) {
 		return strings.ToLower(toString(args[0])), nil
 	}))
 	MustAddFunction(NewWithMultipleSignatures("sort", []string{
 		"(input string) string",
 		"(input number) string",
 		"(elements ...interface{}) []interface{}"},
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			argCount := len(args)
-			if argCount == 0 {
+			switch argCount {
+			case 0:
 				return nil, ErrInvalidDslFunction
-			} else if argCount == 1 {
+			case 1:
 				runes := []rune(toString(args[0]))
 				sort.Slice(runes, func(i int, j int) bool {
 					return runes[i] < runes[j]
 				})
 				return string(runes), nil
-			} else {
+			default:
 				tokens := make([]string, 0, argCount)
 				for _, arg := range args {
 					tokens = append(tokens, toString(arg))
@@ -183,7 +187,7 @@ func init() {
 		},
 	))
 
-	MustAddFunction(NewWithMultipleSignatures("zip", []string{"(file_entry string, content string, ... ) []byte"}, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithMultipleSignatures("zip", []string{"(file_entry string, content string, ... ) []byte"}, true, func(args ...interface{}) (interface{}, error) {
 		if len(args) == 0 || len(args)%2 != 0 {
 			return nil, fmt.Errorf("zip function requires pairs of file entry and content")
 		}
@@ -222,12 +226,13 @@ func init() {
 		"(input string) string",
 		"(input number) string",
 		"(elements ...interface{}) []interface{}"},
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			argCount := len(args)
-			if argCount == 0 {
+			switch argCount {
+			case 0:
 				return nil, ErrInvalidDslFunction
-			} else if argCount == 1 {
+			case 1:
 				builder := &strings.Builder{}
 				visited := make(map[rune]struct{})
 				for _, i := range toString(args[0]) {
@@ -237,7 +242,7 @@ func init() {
 					}
 				}
 				return builder.String(), nil
-			} else {
+			default:
 				result := make([]string, 0, argCount)
 				visited := make(map[string]struct{})
 				for _, i := range args[0:] {
@@ -250,48 +255,48 @@ func init() {
 			}
 		},
 	))
-	MustAddFunction(NewWithPositionalArgs("repeat", 2, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("repeat", 2, true, func(args ...interface{}) (interface{}, error) {
 		count, err := strconv.Atoi(toString(args[1]))
 		if err != nil {
 			return nil, ErrInvalidDslFunction
 		}
 		return strings.Repeat(toString(args[0]), count), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("replace", 3, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("replace", 3, true, func(args ...interface{}) (interface{}, error) {
 		return strings.ReplaceAll(toString(args[0]), toString(args[1]), toString(args[2])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("replace_regex", 3, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("replace_regex", 3, true, func(args ...interface{}) (interface{}, error) {
 		compiled, err := regexp.Compile(toString(args[1]))
 		if err != nil {
 			return nil, err
 		}
 		return compiled.ReplaceAllString(toString(args[0]), toString(args[2])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("trim", 2, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("trim", 2, true, func(args ...interface{}) (interface{}, error) {
 		return strings.Trim(toString(args[0]), toString(args[1])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("trim_left", 2, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("trim_left", 2, true, func(args ...interface{}) (interface{}, error) {
 		return strings.TrimLeft(toString(args[0]), toString(args[1])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("trim_right", 2, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("trim_right", 2, true, func(args ...interface{}) (interface{}, error) {
 		return strings.TrimRight(toString(args[0]), toString(args[1])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("trim_space", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("trim_space", 1, true, func(args ...interface{}) (interface{}, error) {
 		return strings.TrimSpace(toString(args[0])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("trim_prefix", 2, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("trim_prefix", 2, true, func(args ...interface{}) (interface{}, error) {
 		return strings.TrimPrefix(toString(args[0]), toString(args[1])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("trim_suffix", 2, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("trim_suffix", 2, true, func(args ...interface{}) (interface{}, error) {
 		return strings.TrimSuffix(toString(args[0]), toString(args[1])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("reverse", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("reverse", 1, true, func(args ...interface{}) (interface{}, error) {
 		return stringsutil.Reverse(toString(args[0])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("base64", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("base64", 1, true, func(args ...interface{}) (interface{}, error) {
 		return base64.StdEncoding.EncodeToString([]byte(toString(args[0]))), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("gzip", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("gzip", 1, true, func(args ...interface{}) (interface{}, error) {
 		buffer := &bytes.Buffer{}
 		writer := gzip.NewWriter(buffer)
 		if _, err := writer.Write([]byte(args[0].(string))); err != nil {
@@ -302,22 +307,40 @@ func init() {
 
 		return buffer.String(), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("gzip_decode", 1, false, func(args ...interface{}) (interface{}, error) {
-		reader, err := gzip.NewReader(strings.NewReader(args[0].(string)))
-		if err != nil {
-			return "", err
-		}
-		limitReader := io.LimitReader(reader, DefaultMaxDecompressionSize)
+	MustAddFunction(NewWithSingleSignature("gzip_decode",
+		"(data string, optionalReadLimit int) string",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) == 0 {
+				return nil, ErrInvalidDslFunction
+			}
 
-		data, err := io.ReadAll(limitReader)
-		if err != nil {
+			argData := toString(args[0])
+			readLimit := DefaultMaxDecompressionSize
+
+			if len(args) > 1 {
+				if limit, ok := args[1].(float64); ok {
+					readLimit = int64(limit)
+				}
+			}
+
+			reader, err := gzip.NewReader(strings.NewReader(argData))
+			if err != nil {
+				return "", err
+			}
+			limitReader := io.LimitReader(reader, readLimit)
+
+			data, err := io.ReadAll(limitReader)
+			if err != nil && err != io.EOF {
+				_ = reader.Close()
+
+				return "", err
+			}
 			_ = reader.Close()
-			return "", err
-		}
-		_ = reader.Close()
-		return string(data), nil
-	}))
-	MustAddFunction(NewWithPositionalArgs("zlib", 1, false, func(args ...interface{}) (interface{}, error) {
+
+			return string(data), nil
+		}))
+	MustAddFunction(NewWithPositionalArgs("zlib", 1, true, func(args ...interface{}) (interface{}, error) {
 		buffer := &bytes.Buffer{}
 		writer := zlib.NewWriter(buffer)
 		if _, err := writer.Write([]byte(args[0].(string))); err != nil {
@@ -328,23 +351,41 @@ func init() {
 
 		return buffer.String(), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("zlib_decode", 1, false, func(args ...interface{}) (interface{}, error) {
-		reader, err := zlib.NewReader(strings.NewReader(args[0].(string)))
-		if err != nil {
-			return "", err
-		}
-		limitReader := io.LimitReader(reader, DefaultMaxDecompressionSize)
+	MustAddFunction(NewWithSingleSignature("zlib_decode",
+		"(data string, optionalReadLimit int) string",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) == 0 {
+				return nil, ErrInvalidDslFunction
+			}
 
-		data, err := io.ReadAll(limitReader)
-		if err != nil {
+			argData := toString(args[0])
+			readLimit := DefaultMaxDecompressionSize
+
+			if len(args) > 1 {
+				if limit, ok := args[1].(float64); ok {
+					readLimit = int64(limit)
+				}
+			}
+
+			reader, err := zlib.NewReader(strings.NewReader(argData))
+			if err != nil {
+				return "", err
+			}
+			limitReader := io.LimitReader(reader, readLimit)
+
+			data, err := io.ReadAll(limitReader)
+			if err != nil && err != io.EOF {
+				_ = reader.Close()
+
+				return "", err
+			}
 			_ = reader.Close()
-			return "", err
-		}
-		_ = reader.Close()
-		return string(data), nil
-	}))
 
-	MustAddFunction(NewWithPositionalArgs("deflate", 1, false, func(args ...interface{}) (interface{}, error) {
+			return string(data), nil
+		}))
+
+	MustAddFunction(NewWithPositionalArgs("deflate", 1, true, func(args ...interface{}) (interface{}, error) {
 		buffer := &bytes.Buffer{}
 		writer, err := flate.NewWriter(buffer, -1)
 		if err != nil {
@@ -358,18 +399,36 @@ func init() {
 
 		return buffer.String(), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("inflate", 1, false, func(args ...interface{}) (interface{}, error) {
-		reader := flate.NewReader(strings.NewReader(args[0].(string)))
-		limitReader := io.LimitReader(reader, DefaultMaxDecompressionSize)
+	MustAddFunction(NewWithSingleSignature("inflate",
+		"(data string, optionalReadLimit int) string",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) == 0 {
+				return nil, ErrInvalidDslFunction
+			}
 
-		data, err := io.ReadAll(limitReader)
-		if err != nil {
+			argData := toString(args[0])
+			readLimit := DefaultMaxDecompressionSize
+
+			if len(args) > 1 {
+				if limit, ok := args[1].(float64); ok {
+					readLimit = int64(limit)
+				}
+			}
+
+			reader := flate.NewReader(strings.NewReader(argData))
+			limitReader := io.LimitReader(reader, readLimit)
+
+			data, err := io.ReadAll(limitReader)
+			if err != nil && err != io.EOF {
+				_ = reader.Close()
+
+				return "", err
+			}
 			_ = reader.Close()
-			return "", err
-		}
-		_ = reader.Close()
-		return string(data), nil
-	}))
+
+			return string(data), nil
+		}))
 
 	MustAddFunction(NewWithSingleSignature("date_time",
 		"(dateTimeFormat string, optionalUnixTime interface{}) string",
@@ -394,29 +453,78 @@ func init() {
 				return currentTime.Format(dateTimeFormat), nil
 			}
 		}))
-	MustAddFunction(NewWithPositionalArgs("base64_py", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("base64_py", 1, true, func(args ...interface{}) (interface{}, error) {
 		// python encodes to base64 with lines of 76 bytes terminated by new line "\n"
 		stdBase64 := base64.StdEncoding.EncodeToString([]byte(toString(args[0])))
 		return insertInto(stdBase64, 76, '\n'), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("base64_decode", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("base64_decode", 1, true, func(args ...interface{}) (interface{}, error) {
 		data, err := base64.StdEncoding.DecodeString(toString(args[0]))
 		return string(data), err
 	}))
-	MustAddFunction(NewWithPositionalArgs("url_encode", 1, false, func(args ...interface{}) (interface{}, error) {
-		return url.QueryEscape(toString(args[0])), nil
+	MustAddFunction(NewWithSingleSignature("url_encode",
+		"(s string, optionalEncodeAllSpecialChars bool) string",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			var encodeAllChars bool
+			s := toString(args[0])
+
+			if len(args) > 1 {
+				switch v := args[1].(type) {
+				case bool:
+					encodeAllChars = v
+				case int, int64:
+					encodeAllChars = v == 1
+				}
+			}
+
+			shouldEscape := func(c rune, encodeAllChars bool) bool {
+				isAlphanums := (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+				if encodeAllChars {
+					return isAlphanums
+				}
+
+				return isAlphanums || (c == '-' || c == '_' || c == '.' || c == '!' || c == '~' || c == '*' || c == '\'' || c == '(' || c == ')')
+			}
+
+			var result strings.Builder
+			for _, c := range s {
+				if shouldEscape(c, encodeAllChars) {
+					result.WriteRune(c)
+				} else {
+					for _, b := range []byte(string(c)) {
+						result.WriteString(fmt.Sprintf("%%%02X", b))
+					}
+				}
+			}
+			return result.String(), nil
+		},
+	))
+	MustAddFunction(NewWithPositionalArgs("url_decode", 1, true, func(args ...interface{}) (interface{}, error) {
+		s := toString(args[0])
+		var result strings.Builder
+		for i := 0; i < len(s); i++ {
+			if s[i] == '%' && i+2 < len(s) {
+				if hex, err := strconv.ParseUint(s[i+1:i+3], 16, 8); err == nil {
+					result.WriteByte(byte(hex))
+					i += 2
+				} else {
+					result.WriteByte(s[i])
+				}
+			} else {
+				result.WriteByte(s[i])
+			}
+		}
+		return result.String(), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("url_decode", 1, false, func(args ...interface{}) (interface{}, error) {
-		return url.QueryUnescape(toString(args[0]))
-	}))
-	MustAddFunction(NewWithPositionalArgs("hex_encode", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("hex_encode", 1, true, func(args ...interface{}) (interface{}, error) {
 		return hex.EncodeToString([]byte(toString(args[0]))), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("hex_decode", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("hex_decode", 1, true, func(args ...interface{}) (interface{}, error) {
 		decodeString, err := hex.DecodeString(toString(args[0]))
 		return string(decodeString), err
 	}))
-	MustAddFunction(NewWithPositionalArgs("hmac", 3, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("hmac", 3, true, func(args ...interface{}) (interface{}, error) {
 		hashAlgorithm := args[0]
 		data := args[1].(string)
 		secretKey := args[2].(string)
@@ -437,35 +545,46 @@ func init() {
 		h.Write([]byte(data))
 		return hex.EncodeToString(h.Sum(nil)), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("html_escape", 1, false, func(args ...interface{}) (interface{}, error) {
-		return html.EscapeString(toString(args[0])), nil
-	}))
-	MustAddFunction(NewWithPositionalArgs("html_unescape", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithSingleSignature("html_escape",
+		"(s string, optionalConvertAllChars bool) string",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			s := toString(args[0])
+			if len(args) > 1 {
+				convertAllChars := toBool(args[1])
+				if convertAllChars {
+					return strToNumEntities(s), nil
+				}
+			}
+
+			return html.EscapeString(s), nil
+		}))
+	MustAddFunction(NewWithPositionalArgs("html_unescape", 1, true, func(args ...interface{}) (interface{}, error) {
 		return html.UnescapeString(toString(args[0])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("md5", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("md5", 1, true, func(args ...interface{}) (interface{}, error) {
 		return toHexEncodedHash(md5.New(), toString(args[0]))
 	}))
-	MustAddFunction(NewWithPositionalArgs("sha512", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("sha512", 1, true, func(args ...interface{}) (interface{}, error) {
 		return toHexEncodedHash(sha512.New(), toString(args[0]))
 	}))
-	MustAddFunction(NewWithPositionalArgs("sha256", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("sha256", 1, true, func(args ...interface{}) (interface{}, error) {
 		return toHexEncodedHash(sha256.New(), toString(args[0]))
 	}))
-	MustAddFunction(NewWithPositionalArgs("sha1", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("sha1", 1, true, func(args ...interface{}) (interface{}, error) {
 		return toHexEncodedHash(sha1.New(), toString(args[0]))
 	}))
-	MustAddFunction(NewWithPositionalArgs("mmh3", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("mmh3", 1, true, func(args ...interface{}) (interface{}, error) {
 		hasher := murmur3.New32WithSeed(0)
-		hasher.Write([]byte(fmt.Sprint(args[0])))
+		hasher.Write([]byte(fmt.Sprint(args[0]))) //nolint
 		return fmt.Sprintf("%d", int32(hasher.Sum32())), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("contains", 2, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("contains", 2, true, func(args ...interface{}) (interface{}, error) {
 		return strings.Contains(toString(args[0]), toString(args[1])), nil
 	}))
 	MustAddFunction(NewWithSingleSignature("contains_all",
 		"(body interface{}, substrs ...string) bool",
-		false,
+		true,
 		func(arguments ...interface{}) (interface{}, error) {
 			body := toString(arguments[0])
 			for _, value := range arguments[1:] {
@@ -477,7 +596,7 @@ func init() {
 		}))
 	MustAddFunction(NewWithSingleSignature("contains_any",
 		"(body interface{}, substrs ...string) bool",
-		false,
+		true,
 		func(arguments ...interface{}) (interface{}, error) {
 			body := toString(arguments[0])
 			for _, value := range arguments[1:] {
@@ -489,7 +608,7 @@ func init() {
 		}))
 	MustAddFunction(NewWithSingleSignature("starts_with",
 		"(str string, prefix ...string) bool",
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
 				return nil, ErrInvalidDslFunction
@@ -503,7 +622,7 @@ func init() {
 		}))
 	MustAddFunction(NewWithSingleSignature("line_starts_with",
 		"(str string, prefix ...string) bool",
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
 				return nil, ErrInvalidDslFunction
@@ -519,7 +638,7 @@ func init() {
 		}))
 	MustAddFunction(NewWithSingleSignature("ends_with",
 		"(str string, suffix ...string) bool",
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
 				return nil, ErrInvalidDslFunction
@@ -533,7 +652,7 @@ func init() {
 		}))
 	MustAddFunction(NewWithSingleSignature("line_ends_with",
 		"(str string, suffix ...string) bool",
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
 				return nil, ErrInvalidDslFunction
@@ -549,7 +668,7 @@ func init() {
 		}))
 	MustAddFunction(NewWithSingleSignature("concat",
 		"(args ...interface{}) string",
-		false,
+		true,
 		func(arguments ...interface{}) (interface{}, error) {
 			builder := &strings.Builder{}
 			for _, argument := range arguments {
@@ -560,19 +679,20 @@ func init() {
 	MustAddFunction(NewWithMultipleSignatures("split", []string{
 		"(input string, n int) []string",
 		"(input string, separator string, optionalChunkSize) []string"},
-		false,
+		true,
 		func(arguments ...interface{}) (interface{}, error) {
 			argumentsSize := len(arguments)
-			if argumentsSize == 2 {
+			switch argumentsSize {
+			case 2:
 				input := toString(arguments[0])
 				separatorOrCount := toString(arguments[1])
 
 				count, err := strconv.Atoi(separatorOrCount)
 				if err != nil {
-					return strings.SplitN(input, separatorOrCount, -1), nil
+					return strings.Split(input, separatorOrCount), nil
 				}
 				return toChunks(input, count), nil
-			} else if argumentsSize == 3 {
+			case 3:
 				input := toString(arguments[0])
 				separator := toString(arguments[1])
 				count, err := strconv.Atoi(toString(arguments[2]))
@@ -580,35 +700,36 @@ func init() {
 					return nil, ErrInvalidDslFunction
 				}
 				return strings.SplitN(input, separator, count), nil
-			} else {
+			default:
 				return nil, ErrInvalidDslFunction
 			}
 		}))
 	MustAddFunction(NewWithMultipleSignatures("join", []string{
 		"(separator string, elements ...interface{}) string",
 		"(separator string, elements []interface{}) string"},
-		false,
+		true,
 		func(arguments ...interface{}) (interface{}, error) {
 			argumentsSize := len(arguments)
-			if argumentsSize < 2 {
+			switch {
+			case argumentsSize < 2:
 				return nil, ErrInvalidDslFunction
-			} else if argumentsSize == 2 {
+			case argumentsSize == 2:
 				separator := toString(arguments[0])
 				elements, ok := arguments[1].([]string)
 
 				if !ok {
-					return nil, errors.New("cannot cast elements into string")
+					return nil, errkit.New("cannot cast elements into string")
 				}
 
 				return strings.Join(elements, separator), nil
-			} else {
+			default:
 				separator := toString(arguments[0])
 				elements := arguments[1:argumentsSize]
 
 				stringElements := make([]string, 0, argumentsSize)
 				for _, element := range elements {
 					if _, ok := element.([]string); ok {
-						return nil, errors.New("cannot use join on more than one slice element")
+						return nil, errkit.New("cannot use join on more than one slice element")
 					}
 
 					stringElements = append(stringElements, toString(element))
@@ -616,46 +737,75 @@ func init() {
 				return strings.Join(stringElements, separator), nil
 			}
 		}))
-	MustAddFunction(NewWithPositionalArgs("regex", 2, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("regex", 2, true, func(args ...interface{}) (interface{}, error) {
 		compiled, err := regexp.Compile(toString(args[0]))
 		if err != nil {
 			return nil, err
 		}
 		return compiled.MatchString(toString(args[1])), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("regex_all", 2, false, func(args ...interface{}) (interface{}, error) {
-		for _, arg := range toStringSlice(args[1]) {
-			compiled, err := Regex(toString(arg))
+	MustAddFunction(NewWithSingleSignature("regex_all",
+		"(pattern string, inputs ...string) bool",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) < 2 {
+				return nil, ErrInvalidDslFunction
+			}
+
+			compiled, err := regexp.Compile(toString(args[0]))
 			if err != nil {
 				return nil, err
 			}
-			if !compiled.MatchString(toString(args[0])) {
-				return false, nil
+
+			for _, arg := range args[1:] {
+				if !compiled.MatchString(toString(arg)) {
+					return false, nil
+				}
 			}
-		}
-		return false, nil
-	}))
-	MustAddFunction(NewWithPositionalArgs("regex_any", 2, false, func(args ...interface{}) (interface{}, error) {
-		for _, arg := range toStringSlice(args[1]) {
-			compiled, err := Regex(toString(arg))
+
+			return true, nil
+		}))
+	MustAddFunction(NewWithSingleSignature("regex_any",
+		"(pattern string, inputs ...string) bool",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) < 2 {
+				return nil, ErrInvalidDslFunction
+			}
+
+			pattern := toString(args[0])
+			compiled, err := regexp.Compile(pattern)
 			if err != nil {
 				return nil, err
 			}
-			if compiled.MatchString(toString(args[0])) {
-				return true, nil
+
+			for _, arg := range args[1:] {
+				if compiled.MatchString(toString(arg)) {
+					return true, nil
+				}
 			}
-		}
-		return false, nil
-	}))
-	MustAddFunction(NewWithPositionalArgs("equals_any", 2, false, func(args ...interface{}) (interface{}, error) {
-		for _, arg := range toStringSlice(args[1]) {
-			if args[0] == arg {
-				return true, nil
+
+			return false, nil
+		}))
+	MustAddFunction(NewWithSingleSignature("equals_any",
+		"(s interface{}, subs ...interface{}) bool",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) < 2 {
+				return nil, ErrInvalidDslFunction
 			}
-		}
-		return false, nil
-	}))
-	MustAddFunction(NewWithPositionalArgs("remove_bad_chars", 2, false, func(args ...interface{}) (interface{}, error) {
+
+			s := toString(args[0])
+
+			for _, arg := range args[1:] {
+				if toString(arg) == s {
+					return true, nil
+				}
+			}
+
+			return false, nil
+		}))
+	MustAddFunction(NewWithPositionalArgs("remove_bad_chars", 2, true, func(args ...interface{}) (interface{}, error) {
 		input := toString(args[0])
 		badChars := toString(args[1])
 		return TrimAll(input, badChars), nil
@@ -796,7 +946,7 @@ func init() {
 			}
 			return randomip.GetRandomIPWithCidr(cidrs...)
 		}))
-	MustAddFunction(NewWithPositionalArgs("generate_java_gadget", 3, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("generate_java_gadget", 3, true, func(args ...interface{}) (interface{}, error) {
 		gadget := args[0].(string)
 		cmd := args[1].(string)
 		encoding := args[2].(string)
@@ -821,7 +971,7 @@ func init() {
 		}))
 	MustAddFunction(NewWithSingleSignature("to_unix_time",
 		"(input string, optionalLayout string) int64",
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			input := toString(args[0])
 
@@ -862,7 +1012,7 @@ func init() {
 		}))
 	MustAddFunction(NewWithSingleSignature("compare_versions",
 		"(firstVersion, constraints ...string) bool",
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
 				return nil, ErrInvalidDslFunction
@@ -870,7 +1020,7 @@ func init() {
 
 			firstParsed, parseErr := version.NewVersion(toString(args[0]))
 			if parseErr != nil {
-				return nil, errorutil.NewWithErr(ErrParsingArg).Wrap(parseErr)
+				return nil, errkit.Combine(ErrParsingArg, parseErr)
 			}
 
 			var versionConstraints []string
@@ -884,7 +1034,7 @@ func init() {
 			result := constraint.Check(firstParsed)
 			return result, nil
 		}))
-	MustAddFunction(NewWithPositionalArgs("padding", 4, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("padding", 4, true, func(args ...interface{}) (interface{}, error) {
 		// padding('Test String', 'A', 50, 'prefix') // will pad "Test String" up to 50 characters with "A" as padding byte, prefixing it.
 		bLen := 0
 		switch value := args[2].(type) {
@@ -901,11 +1051,11 @@ func init() {
 			bLen = int(floatVal)
 		}
 		if bLen == 0 {
-			return nil, errorutil.New("invalid padding length")
+			return nil, errkit.New("invalid padding length")
 		}
 		bByte := []byte(toString(args[1]))
 		if len(bByte) == 0 {
-			return nil, errorutil.New("invalid padding byte")
+			return nil, errkit.New("invalid padding byte")
 		}
 		bData := []byte(toString(args[0]))
 		dataLen := len(bData)
@@ -915,7 +1065,7 @@ func init() {
 
 		padMode, ok := args[3].(string)
 		if !ok || (padMode != "prefix" && padMode != "suffix") {
-			return nil, errorutil.New("padding mode must be 'prefix' or 'suffix'")
+			return nil, errkit.New("padding mode must be 'prefix' or 'suffix'")
 		}
 
 		paddingLen := bLen - dataLen
@@ -947,7 +1097,7 @@ func init() {
 			}
 			return true, nil
 		}))
-	MustAddFunction(NewWithPositionalArgs("to_number", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("to_number", 1, true, func(args ...interface{}) (interface{}, error) {
 		argStr := toString(args[0])
 		if govalidator.IsInt(argStr) {
 			sint, err := strconv.Atoi(argStr)
@@ -958,42 +1108,45 @@ func init() {
 		}
 		return nil, fmt.Errorf("%v could not be converted to int", argStr)
 	}))
-	MustAddFunction(NewWithPositionalArgs("to_string", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("to_string", 1, true, func(args ...interface{}) (interface{}, error) {
 		return toString(args[0]), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("dec_to_hex", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("to_bool", 1, true, func(args ...interface{}) (interface{}, error) {
+		return toBool(args[0]), nil
+	}))
+	MustAddFunction(NewWithPositionalArgs("dec_to_hex", 1, true, func(args ...interface{}) (interface{}, error) {
 		if number, ok := args[0].(float64); ok {
 			hexNum := strconv.FormatInt(int64(number), 16)
 			return toString(hexNum), nil
 		}
 		return nil, fmt.Errorf("invalid number: %T", args[0])
 	}))
-	MustAddFunction(NewWithPositionalArgs("hex_to_dec", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("hex_to_dec", 1, true, func(args ...interface{}) (interface{}, error) {
 		return stringNumberToDecimal(args, "0x", 16)
 	}))
-	MustAddFunction(NewWithPositionalArgs("oct_to_dec", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("oct_to_dec", 1, true, func(args ...interface{}) (interface{}, error) {
 		return stringNumberToDecimal(args, "0o", 8)
 	}))
-	MustAddFunction(NewWithPositionalArgs("bin_to_dec", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("bin_to_dec", 1, true, func(args ...interface{}) (interface{}, error) {
 		return stringNumberToDecimal(args, "0b", 2)
 	}))
 	MustAddFunction(NewWithSingleSignature("substr",
 		"(str string, start int, optionalEnd int)",
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
 				return nil, ErrInvalidDslFunction
 			}
 			argStr := toString(args[0])
 			if len(argStr) == 0 {
-				return nil, errors.New("empty string")
+				return nil, errkit.New("empty string")
 			}
 			start, err := strconv.Atoi(toString(args[1]))
 			if err != nil {
-				return nil, errorutil.NewWithErr(err).Msgf("invalid start position")
+				return nil, errkit.Wrap(err, "invalid start position")
 			}
 			if start > len(argStr) {
-				return nil, errors.New("start position bigger than slice length")
+				return nil, errkit.New("start position bigger than slice length")
 			}
 			if len(args) == 2 {
 				return argStr[start:], nil
@@ -1001,16 +1154,16 @@ func init() {
 
 			end, err := strconv.Atoi(toString(args[2]))
 			if err != nil {
-				return nil, errors.New("invalid end position")
+				return nil, errkit.New("invalid end position")
 			}
 			if end < 0 {
-				return nil, errors.New("negative end position")
+				return nil, errkit.New("negative end position")
 			}
 			if end < start {
-				return nil, errors.New("end position before start")
+				return nil, errkit.New("end position before start")
 			}
 			if end > len(argStr) {
-				return nil, errors.New("end position bigger than slice length start")
+				return nil, errkit.New("end position bigger than slice length start")
 			}
 			return argStr[start:end], nil
 		}))
@@ -1047,7 +1200,7 @@ func init() {
 	}))
 	MustAddFunction(NewWithSingleSignature("generate_jwt",
 		"(jsonString, algorithm, optionalSignature string, optionalMaxAgeUnix interface{}) string",
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			var algorithm string
 			var optionalSignature []byte
@@ -1130,7 +1283,7 @@ func init() {
 
 			return jwt.Sign(jwtAlgorithm, optionalSignature, jsonData, signOpts...)
 		}))
-	MustAddFunction(NewWithPositionalArgs("json_minify", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("json_minify", 1, true, func(args ...interface{}) (interface{}, error) {
 		var data map[string]interface{}
 
 		err := json.Unmarshal([]byte(args[0].(string)), &data)
@@ -1145,7 +1298,7 @@ func init() {
 
 		return string(minified), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("json_prettify", 1, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("json_prettify", 1, true, func(args ...interface{}) (interface{}, error) {
 		var buf bytes.Buffer
 
 		err := json.Indent(&buf, []byte(args[0].(string)), "", "    ")
@@ -1155,7 +1308,7 @@ func init() {
 
 		return buf.String(), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("ip_format", 2, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("ip_format", 2, true, func(args ...interface{}) (interface{}, error) {
 		ipFormat, err := strconv.ParseInt(toString(args[1]), 10, 64)
 		if err != nil {
 			return nil, err
@@ -1191,7 +1344,7 @@ func init() {
 
 			return llm.Query(prompt, model)
 		}))
-	MustAddFunction(NewWithPositionalArgs("unpack", 2, false, func(args ...interface{}) (interface{}, error) {
+	MustAddFunction(NewWithPositionalArgs("unpack", 2, true, func(args ...interface{}) (interface{}, error) {
 		// format as string (ref: https://docs.python.org/3/library/struct.html#format-characters)
 		format, ok := args[0].(string)
 		if !ok {
@@ -1216,7 +1369,7 @@ func init() {
 	}))
 	MustAddFunction(NewWithSingleSignature("xor",
 		"(args ...interface{}) interface{}",
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
 				return nil, errors.New("at least two arguments needed")
@@ -1282,7 +1435,7 @@ func init() {
 
 	MustAddFunction(NewWithSingleSignature("count",
 		"(str, substr string) int",
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 2 {
 				return nil, ErrInvalidDslFunction
@@ -1297,7 +1450,7 @@ func init() {
 
 	MustAddFunction(NewWithSingleSignature("to_title",
 		"(s, optionalLang string) string",
-		false,
+		true,
 		func(args ...interface{}) (interface{}, error) {
 			var lang = language.Und
 			var s string
@@ -1319,6 +1472,93 @@ func init() {
 			return cases.Title(lang).String(s), nil
 		},
 	))
+
+	MustAddFunction(NewWithSingleSignature("cookie_unsign",
+		"(s string) string", false,
+		func(args ...interface{}) (interface{}, error) {
+			argSize := len(args)
+			if argSize < 1 {
+				return nil, ErrInvalidDslFunction
+			}
+			s := toString(args[0])
+
+			wl := monster.NewWordlist()
+			if err := wl.LoadDefault(); err != nil {
+				return s, errors.New("could not load default wordlist")
+			}
+
+			c := monster.NewCookie(s)
+			if !c.Decode() {
+				return s, errors.New("could not decode cookie")
+			}
+
+			if cookie, ok := c.Unsign(wl, 100); ok {
+				return string(cookie), nil
+			}
+
+			return s, errors.New("could not unsign cookie")
+		},
+	))
+
+	MustAddFunction(NewWithPositionalArgs("gzip_mtime", 1, true, func(args ...interface{}) (interface{}, error) {
+		if len(args) == 0 {
+			return nil, ErrInvalidDslFunction
+		}
+
+		argData := toString(args[0])
+		readLimit := DefaultMaxDecompressionSize
+
+		reader, err := gzip.NewReader(io.LimitReader(strings.NewReader(argData), readLimit))
+		if err != nil {
+			return "", err
+		}
+
+		var mtime int64
+		if !reader.ModTime.IsZero() {
+			mtime = reader.ModTime.Unix()
+		}
+		_ = reader.Close()
+
+		return float64(mtime), nil
+	}))
+
+	MustAddFunction(NewWithPositionalArgs("rsa_encrypt",
+		2,
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) != 2 {
+				return nil, errors.New("rsa_encrypt expects 2 arguments: plaintext, pemPublicKey")
+			}
+
+			plaintext, ok1 := args[0].(string)
+			publicKeyPem, ok2 := args[1].(string)
+
+			if !ok1 || !ok2 {
+				return nil, errors.New("invalid arguments")
+			}
+
+			block, _ := pem.Decode([]byte(publicKeyPem))
+			if block == nil {
+				return nil, errors.New("invalid PEM format")
+			}
+
+			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+			if err != nil {
+				return nil, err
+			}
+
+			rsaPub, ok := pub.(*rsa.PublicKey)
+			if !ok {
+				return nil, errors.New("not an RSA public key")
+			}
+
+			ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, rsaPub, []byte(plaintext))
+			if err != nil {
+				return nil, fmt.Errorf("RSA encryption failed: %w", err)
+			}
+			return base64.StdEncoding.EncodeToString(ciphertext), nil
+		}),
+	)
 
 	DefaultHelperFunctions = HelperFunctions()
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)

