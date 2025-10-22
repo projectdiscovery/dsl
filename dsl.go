@@ -518,8 +518,8 @@ func init() {
 		return result.String(), nil
 	}))
 	MustAddFunction(NewWithMultipleSignatures("hex_encode", []string{
-		"(data string) string",
-		"(data string, format string) string"},
+		"(data interface{}) interface{}",
+		"(data interface{}, optionalFormat string) interface{}"},
 		true,
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 1 || len(args) > 2 {

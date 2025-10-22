@@ -260,7 +260,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	gzip_decode(data string, optionalReadLimit int) string
 	gzip_mtime(arg1 interface{}) interface{}
 	hex_decode(arg1 interface{}) interface{}
-	hex_encode(arg1 interface{}) interface{}
+	hex_encode(data interface{}) interface{}
+	hex_encode(data interface{}, optionalFormat string) interface{}
 	hex_to_dec(arg1 interface{}) interface{}
 	hmac(arg1, arg2, arg3 interface{}) interface{}
 	html_escape(s string, optionalConvertAllChars bool) string
