@@ -536,7 +536,7 @@ func init() {
 
 			format := toString(args[1])
 			switch strings.ToLower(format) {
-			case "escaped", "escape", "\\x":
+			case "x":
 				// New escaped format: \x6d\x65\x6f\x77
 				var result strings.Builder
 				for i := 0; i < len(hexString); i += 2 {
