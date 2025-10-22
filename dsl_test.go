@@ -260,7 +260,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	gzip_decode(data string, optionalReadLimit int) string
 	gzip_mtime(arg1 interface{}) interface{}
 	hex_decode(arg1 interface{}) interface{}
-	hex_encode(arg1 interface{}) interface{}
+	hex_encode(data interface{}) interface{}
+	hex_encode(data interface{}, optionalFormat string) interface{}
 	hex_to_dec(arg1 interface{}) interface{}
 	hmac(arg1, arg2, arg3 interface{}) interface{}
 	html_escape(s string, optionalConvertAllChars bool) string
@@ -350,6 +351,8 @@ func TestDslExpressions(t *testing.T) {
 		`base64(1234)`:                                   "MTIzNA==",
 		`base64_py("Hello")`:                             "SGVsbG8=\n",
 		`hex_encode("aa")`:                               "6161",
+		`hex_encode("aa", "standard")`:                   "6161",
+		`hex_encode("aa", "x")`:                          "\\x61\\x61",
 		`html_escape("<body>test</body>")`:               "&lt;body&gt;test&lt;&sol;body&gt;",
 		`html_escape("<body>test</body>", true)`:         "&lt;&#98;&#111;&#100;&#121;&gt;&#116;&#101;&#115;&#116;&lt;&sol;&#98;&#111;&#100;&#121;&gt;",
 		`html_unescape("&lt;body&gt;test&lt;/body&gt;")`: "<body>test</body>",
