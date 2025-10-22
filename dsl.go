@@ -517,9 +517,40 @@ func init() {
 		}
 		return result.String(), nil
 	}))
-	MustAddFunction(NewWithPositionalArgs("hex_encode", 1, true, func(args ...interface{}) (interface{}, error) {
-		return hex.EncodeToString([]byte(toString(args[0]))), nil
-	}))
+	MustAddFunction(NewWithMultipleSignatures("hex_encode", []string{
+		"(data string) string",
+		"(data string, format string) string"},
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) < 1 || len(args) > 2 {
+				return nil, ErrInvalidDslFunction
+			}
+
+			data := toString(args[0])
+			hexString := hex.EncodeToString([]byte(data))
+
+			// Default behavior (current behavior)
+			if len(args) == 1 {
+				return hexString, nil
+			}
+
+			format := toString(args[1])
+			switch strings.ToLower(format) {
+			case "escaped", "escape", "\\x":
+				// New escaped format: \x6d\x65\x6f\x77
+				var result strings.Builder
+				for i := 0; i < len(hexString); i += 2 {
+					if i+1 < len(hexString) {
+						result.WriteString("\\x")
+						result.WriteString(hexString[i : i+2])
+					}
+				}
+				return result.String(), nil
+			default:
+				// Keep current behavior as default for any other format
+				return hexString, nil
+			}
+		}))
 	MustAddFunction(NewWithPositionalArgs("hex_decode", 1, true, func(args ...interface{}) (interface{}, error) {
 		decodeString, err := hex.DecodeString(toString(args[0]))
 		return string(decodeString), err
