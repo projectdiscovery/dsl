@@ -52,6 +52,7 @@ import (
 	"github.com/projectdiscovery/utils/conn/connpool"
 	jarm "github.com/projectdiscovery/utils/crypto/jarm"
 	"github.com/projectdiscovery/utils/errkit"
+	hexutil "github.com/projectdiscovery/utils/hex"
 	"github.com/projectdiscovery/utils/html"
 	maputils "github.com/projectdiscovery/utils/maps"
 	randint "github.com/projectdiscovery/utils/rand"
@@ -539,30 +540,15 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 
-			data := toString(args[0])
-			hexString := hex.EncodeToString([]byte(data))
-
-			// Default behavior (current behavior)
+			data := args[0]
 			if len(args) == 1 {
-				return hexString, nil
+				// Default behavior: standard hex format
+				return hexutil.Encode(data), nil
 			}
 
+			// Optional format parameter
 			format := toString(args[1])
-			switch strings.ToLower(format) {
-			case "x":
-				// New escaped format: \x6d\x65\x6f\x77
-				var result strings.Builder
-				for i := 0; i < len(hexString); i += 2 {
-					if i+1 < len(hexString) {
-						result.WriteString("\\x")
-						result.WriteString(hexString[i : i+2])
-					}
-				}
-				return result.String(), nil
-			default:
-				// Keep current behavior as default for any other format
-				return hexString, nil
-			}
+			return hexutil.Encode(data, format), nil
 		}))
 	MustAddFunction(NewWithPositionalArgs("hex_decode", 1, true, func(args ...interface{}) (interface{}, error) {
 		decodeString, err := hex.DecodeString(toString(args[0]))
