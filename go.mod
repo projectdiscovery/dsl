@@ -16,7 +16,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.59
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/mapcidr v1.1.96
-	github.com/projectdiscovery/utils v0.6.1-0.20251028094546-b46e3278c921
+	github.com/projectdiscovery/utils v0.6.1-0.20251030144701-ce5c4b44e1e6
 	github.com/sashabaranov/go-openai v1.37.0
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/stretchr/testify v1.11.1
