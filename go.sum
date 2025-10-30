@@ -155,8 +155,8 @@ github.com/projectdiscovery/gostruct v0.0.2 h1:s8gP8ApugGM4go1pA+sVlPDXaWqNP5BBD
 github.com/projectdiscovery/gostruct v0.0.2/go.mod h1:H86peL4HKwMXcQQtEa6lmC8FuD9XFt6gkNR0B/Mu5PE=
 github.com/projectdiscovery/mapcidr v1.1.96 h1:MHDKi7rxrTVYsQWzLxfYcop/EPYa3ldUjB+oMbmuLBI=
 github.com/projectdiscovery/mapcidr v1.1.96/go.mod h1:be4kT3vBPxsJeeu3e50/0ZuhhfPMNjxOCCEeD4bryqE=
-github.com/projectdiscovery/utils v0.6.1-0.20251028094546-b46e3278c921 h1:mtJobYueXn1hAh8ZI67aZPYjoELNFmGZfyqS0eYOWnM=
-github.com/projectdiscovery/utils v0.6.1-0.20251028094546-b46e3278c921/go.mod h1:6XB0NE4/B2s72vfgrb2HnTpz1Z+Nr2dZYRUieNgDFRk=
+github.com/projectdiscovery/utils v0.6.1-0.20251030144701-ce5c4b44e1e6 h1:nvszzYNHYnc8X+Dm68zMuYNNesZJp7QWfe8EEyL4azc=
+github.com/projectdiscovery/utils v0.6.1-0.20251030144701-ce5c4b44e1e6/go.mod h1:GOjhpPLmpMHcYJKI0vhjvjdczMQf3jWdUgYiBeKkwVk=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd/go.mod h1:hPqNNc0+uJM6H+SuU8sEs5K5IQeKccPqeSjfgcKGgPk=
