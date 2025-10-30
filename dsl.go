@@ -26,6 +26,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"os"
 	"reflect"
 	"regexp"
 	"sort"
@@ -48,6 +49,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gostruct"
 	"github.com/projectdiscovery/mapcidr"
+	"github.com/projectdiscovery/utils/conn/connpool"
 	jarm "github.com/projectdiscovery/utils/crypto/jarm"
 	"github.com/projectdiscovery/utils/errkit"
 	"github.com/projectdiscovery/utils/html"
@@ -82,6 +84,17 @@ var (
 	// Initialize faker functions
 	faker = gofakeit.New(0)
 )
+
+// firstNonEmptyEnv returns the first non-empty environment variable value
+// from the provided list of keys (checked in order).
+func firstNonEmptyEnv(keys ...string) string {
+	for _, key := range keys {
+		if v := os.Getenv(key); v != "" {
+			return v
+		}
+	}
+	return ""
+}
 
 var PrintDebugCallback func(args ...interface{}) error
 
@@ -1460,6 +1473,15 @@ func init() {
 		port, err := strconv.Atoi(portRaw)
 		if err != nil {
 			return nil, err
+		}
+		// pick the first available proxy from common env vars (case-insensitive)
+		proxy := firstNonEmptyEnv("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy")
+		if proxy != "" {
+			socks5Dialer, err := connpool.NewCreateSOCKS5Dialer(proxy)
+			if err != nil {
+				return nil, err
+			}
+			return jarm.HashWithDialer(socks5Dialer, hostname, port, 10)
 		}
 		return jarm.HashWithDialer(nil, hostname, port, 10)
 	}))
