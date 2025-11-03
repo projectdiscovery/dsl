@@ -153,8 +153,8 @@ github.com/projectdiscovery/gologger v1.1.59 h1:3XFidZHrUqtvL1CUbw7L1jtwiUmTZxT2
 github.com/projectdiscovery/gologger v1.1.59/go.mod h1:8FJFKmo0N4ITIH3n1Jy4ze6ijr+mA3t78g+VpN8uBRU=
 github.com/projectdiscovery/gostruct v0.0.2 h1:s8gP8ApugGM4go1pA+sVlPDXaWqNP5BBDDSv7VEdG1M=
 github.com/projectdiscovery/gostruct v0.0.2/go.mod h1:H86peL4HKwMXcQQtEa6lmC8FuD9XFt6gkNR0B/Mu5PE=
-github.com/projectdiscovery/mapcidr v1.1.96 h1:MHDKi7rxrTVYsQWzLxfYcop/EPYa3ldUjB+oMbmuLBI=
-github.com/projectdiscovery/mapcidr v1.1.96/go.mod h1:be4kT3vBPxsJeeu3e50/0ZuhhfPMNjxOCCEeD4bryqE=
+github.com/projectdiscovery/mapcidr v1.1.97 h1:7FkxNNVXp+m1rIu5Nv/2SrF9k4+LwP8QuWs2puwy+2w=
+github.com/projectdiscovery/mapcidr v1.1.97/go.mod h1:9dgTJh1SP02gYZdpzMjm6vtYFkEHQHoTyaVNvaeJ7lA=
 github.com/projectdiscovery/utils v0.6.1-0.20251030144701-ce5c4b44e1e6 h1:nvszzYNHYnc8X+Dm68zMuYNNesZJp7QWfe8EEyL4azc=
 github.com/projectdiscovery/utils v0.6.1-0.20251030144701-ce5c4b44e1e6/go.mod h1:GOjhpPLmpMHcYJKI0vhjvjdczMQf3jWdUgYiBeKkwVk=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
