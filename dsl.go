@@ -983,6 +983,14 @@ func init() {
 		data := deserialization.GenerateJavaGadget(gadget, cmd, encoding)
 		return data, nil
 	}))
+	MustAddFunction(NewWithPositionalArgs("generate_dotnet_gadget", 4, true, func(args ...interface{}) (interface{}, error) {
+		gadget := args[0].(string)
+		cmd := args[1].(string)
+		formatter := args[2].(string)
+		encoding := args[3].(string)
+		data := deserialization.GenerateDotNetGadget(gadget, cmd, formatter, encoding)
+		return data, nil
+	}))
 	MustAddFunction(NewWithSingleSignature("unix_time",
 		"(optionalSeconds uint) float64",
 		false,
