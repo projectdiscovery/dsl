@@ -1413,7 +1413,8 @@ func init() {
 				return nil, errors.New("at least two arguments needed")
 			}
 
-			n := -1
+			inputs := make([][]byte, 0, len(args))
+			maxLen := 0
 			for _, arg := range args {
 				var b []byte
 				switch v := arg.(type) {
@@ -1424,21 +1425,19 @@ func init() {
 				default:
 					return nil, fmt.Errorf("invalid argument type %T", arg)
 				}
-				if n == -1 {
-					n = len(b)
-				} else if len(b) != n {
-					return nil, errors.New("all arguments must have the same length")
+				if len(b) == 0 {
+					return nil, errors.New("empty arguments are not allowed")
+				}
+				inputs = append(inputs, b)
+				if len(b) > maxLen {
+					maxLen = len(b)
 				}
 			}
 
-			result := make([]byte, n)
-			for i := 0; i < n; i++ {
-				for _, arg := range args {
-					b, ok := arg.([]byte)
-					if !ok {
-						b = []byte(arg.(string))
-					}
-					result[i] ^= b[i]
+			result := make([]byte, maxLen)
+			for i := 0; i < maxLen; i++ {
+				for _, b := range inputs {
+					result[i] ^= b[i%len(b)]
 				}
 			}
 
@@ -1739,8 +1738,8 @@ func AddMultiSignatureHelperFunction(key string, signatureparts []string, cachea
 	return AddFunction(function)
 }
 
-func GetFunctionNames(heperFunctions map[string]govaluate.ExpressionFunction) []string {
-	return maputils.GetKeys(heperFunctions)
+func GetFunctionNames(helperFunctions map[string]govaluate.ExpressionFunction) []string {
+	return maputils.GetKeys(helperFunctions)
 }
 
 // GetPrintableDslFunctionSignatures returns the function signatures for the
