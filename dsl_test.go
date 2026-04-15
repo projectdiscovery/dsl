@@ -462,6 +462,8 @@ func TestDslExpressions(t *testing.T) {
 		`ip_format('127.0.1.0', '11')`:                                                               "127.0.256",
 		"unpack('>I', '\xac\xd7\t\xd0')":                                                             -272646673,
 		"xor('\x01\x02', '\x02\x01')":                                                                []uint8([]byte{0x3, 0x3}),
+		"xor('\x01\x02\x03\x04', '\x02\x01')":                                                        []uint8([]byte{0x3, 0x3, 0x1, 0x5}),
+		"xor('\x05', '\x01\x02\x03')":                                                                 []uint8([]byte{0x4, 0x7, 0x6}),
 		`count("projectdiscovery", "e")`:                                                             2,
 		`concat(to_title("pRoJeCt"), to_title("diScOvErY"))`:                                         "ProjectDiscovery",
 		`concat(to_title("welcome "), "to", to_title(" watch"), to_title("mojo"))`:                   "Welcome to WatchMojo",

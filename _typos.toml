@@ -1,0 +1,10 @@
+[default.extend-words]
+# intentional test data
+comparitive = "comparitive"
+examplify = "examplify"
+
+[default.extend-identifiers]
+TrUe = "TrUe"
+
+[files]
+extend-exclude = ["go.sum"]
