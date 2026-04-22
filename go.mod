@@ -21,6 +21,7 @@ require (
 	github.com/projectdiscovery/utils v0.10.0
 	github.com/sashabaranov/go-openai v1.37.0
 	github.com/spaolacci/murmur3 v1.1.0
+	github.com/spf13/cast v1.10.0
 	github.com/stretchr/testify v1.11.1
 	github.com/vulncheck-oss/go-exploit v1.51.0
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
