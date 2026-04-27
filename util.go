@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/utils/html"
 	randint "github.com/projectdiscovery/utils/rand"
+	"github.com/spf13/cast"
 )
 
 const (
@@ -138,6 +139,44 @@ func toBool(data interface{}) bool {
 	}
 }
 
+func numericCastInput(data interface{}) (interface{}, error) {
+	switch value := data.(type) {
+	case int, int8, int16, int32, int64:
+		return value, nil
+	case uint, uint8, uint16, uint32, uint64:
+		return value, nil
+	case float32, float64:
+		return value, nil
+	case string:
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			return nil, fmt.Errorf("invalid number: %T", data)
+		}
+		if _, err := strconv.ParseFloat(trimmed, 64); err != nil {
+			return nil, err
+		}
+		return trimmed, nil
+	default:
+		return nil, fmt.Errorf("invalid number: %T", data)
+	}
+}
+
+func toInt(data interface{}) (int, error) {
+	value, err := numericCastInput(data)
+	if err != nil {
+		return 0, err
+	}
+	return cast.ToIntE(value)
+}
+
+func toInt64(data interface{}) (int64, error) {
+	value, err := numericCastInput(data)
+	if err != nil {
+		return 0, err
+	}
+	return cast.ToInt64E(value)
+}
+
 func insertInto(s string, interval int, sep rune) string {
 	var buffer bytes.Buffer
 	before := interval - 1
@@ -206,10 +245,12 @@ func parseTimeOrNow(arguments []interface{}) (time.Time, error) {
 				return time.Time{}, errors.New("invalid argument type")
 			}
 			currentTime = time.Unix(unixTime, 0)
-		case int64, float64:
-			currentTime = time.Unix(int64(inputUnixTime.(float64)), 0)
 		default:
-			return time.Time{}, errors.New("invalid argument type")
+			unixTime, err := toInt64(inputUnixTime)
+			if err != nil {
+				return time.Time{}, errors.New("invalid argument type")
+			}
+			currentTime = time.Unix(unixTime, 0)
 		}
 	} else {
 		currentTime = time.Now()

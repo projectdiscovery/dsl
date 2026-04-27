@@ -333,8 +333,9 @@ func init() {
 			readLimit := DefaultMaxDecompressionSize
 
 			if len(args) > 1 {
-				if limit, ok := args[1].(float64); ok {
-					readLimit = int64(limit)
+				limit, err := toInt64(args[1])
+				if err == nil {
+					readLimit = limit
 				}
 			}
 
@@ -377,8 +378,9 @@ func init() {
 			readLimit := DefaultMaxDecompressionSize
 
 			if len(args) > 1 {
-				if limit, ok := args[1].(float64); ok {
-					readLimit = int64(limit)
+				limit, err := toInt64(args[1])
+				if err == nil {
+					readLimit = limit
 				}
 			}
 
@@ -425,8 +427,9 @@ func init() {
 			readLimit := DefaultMaxDecompressionSize
 
 			if len(args) > 1 {
-				if limit, ok := args[1].(float64); ok {
-					readLimit = int64(limit)
+				limit, err := toInt64(args[1])
+				if err == nil {
+					readLimit = limit
 				}
 			}
 
@@ -864,7 +867,6 @@ func init() {
 		"(length uint, optionalCharSet string) string",
 		false,
 		func(args ...interface{}) (interface{}, error) {
-			var length int
 			charSet := letters + numbers
 
 			argSize := len(args)
@@ -872,7 +874,10 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 
-			length = int(args[0].(float64))
+			length, err := toInt(args[0])
+			if err != nil {
+				return nil, err
+			}
 
 			if argSize == 2 {
 				inputCharSet := toString(args[1])
@@ -886,7 +891,6 @@ func init() {
 		"(length uint, optionalBadChars string) string",
 		false,
 		func(args ...interface{}) (interface{}, error) {
-			length := 0
 			badChars := ""
 
 			argSize := len(args)
@@ -894,7 +898,10 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 
-			length = int(args[0].(float64))
+			length, err := toInt(args[0])
+			if err != nil {
+				return nil, err
+			}
 
 			if argSize == 2 {
 				badChars = toString(args[1])
@@ -906,7 +913,6 @@ func init() {
 		"(length uint, optionalBadChars string) string",
 		false,
 		func(args ...interface{}) (interface{}, error) {
-			var length int
 			badChars := ""
 
 			argSize := len(args)
@@ -914,7 +920,10 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 
-			length = int(args[0].(float64))
+			length, err := toInt(args[0])
+			if err != nil {
+				return nil, err
+			}
 
 			if argSize == 2 {
 				badChars = toString(args[1])
@@ -931,7 +940,10 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 
-			length := int(args[0].(float64))
+			length, err := toInt(args[0])
+			if err != nil {
+				return nil, err
+			}
 			badNumbers := ""
 
 			if argSize == 2 {
@@ -954,10 +966,18 @@ func init() {
 			max := math.MaxInt32
 
 			if argSize >= 1 {
-				min = int(args[0].(float64))
+				convertedMin, err := toInt(args[0])
+				if err != nil {
+					return nil, err
+				}
+				min = convertedMin
 			}
 			if argSize == 2 {
-				max = int(args[1].(float64))
+				convertedMax, err := toInt(args[1])
+				if err != nil {
+					return nil, err
+				}
+				max = convertedMax
 			}
 
 			rint, err := randint.IntN(max - min)
@@ -1001,7 +1021,11 @@ func init() {
 			if argSize != 0 && argSize != 1 {
 				return nil, ErrInvalidDslFunction
 			} else if argSize == 1 {
-				seconds = int(args[0].(float64))
+				convertedSeconds, err := toInt(args[0])
+				if err != nil {
+					return nil, err
+				}
+				seconds = convertedSeconds
 			}
 
 			offset := time.Now().Add(time.Duration(seconds) * time.Second)
@@ -1044,7 +1068,10 @@ func init() {
 			if len(args) != 1 {
 				return nil, ErrInvalidDslFunction
 			}
-			seconds := args[0].(float64)
+			seconds, err := toInt(args[0])
+			if err != nil {
+				return nil, err
+			}
 			time.Sleep(time.Duration(seconds) * time.Second)
 			return true, nil
 		}))
@@ -1153,8 +1180,9 @@ func init() {
 		return toBool(args[0]), nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("dec_to_hex", 1, true, func(args ...interface{}) (interface{}, error) {
-		if number, ok := args[0].(float64); ok {
-			hexNum := strconv.FormatInt(int64(number), 16)
+		number, err := toInt64(args[0])
+		if err == nil {
+			hexNum := strconv.FormatInt(number, 16)
 			return toString(hexNum), nil
 		}
 		return nil, fmt.Errorf("invalid number: %T", args[0])

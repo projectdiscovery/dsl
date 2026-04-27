@@ -633,6 +633,81 @@ func TestRandDslExpressions(t *testing.T) {
 	}
 }
 
+func TestNestedNumericDslExpressions(t *testing.T) {
+	tests := []struct {
+		expression string
+		assert     func(t *testing.T, result interface{})
+	}{
+		{
+			expression: `rand_base(rand_int(5, 6), "abc")`,
+			assert: func(t *testing.T, result interface{}) {
+				require.Regexp(t, regexp.MustCompile(`^[abc]{5}$`), toString(result))
+			},
+		},
+		{
+			expression: `rand_text_alpha(rand_int(5, 6), "abc")`,
+			assert: func(t *testing.T, result interface{}) {
+				require.Regexp(t, regexp.MustCompile(`^[A-Zd-z]{5}$`), toString(result))
+			},
+		},
+		{
+			expression: `rand_text_alphanumeric(rand_int(5, 6), "ab12")`,
+			assert: func(t *testing.T, result interface{}) {
+				require.Regexp(t, regexp.MustCompile(`^[03-9A-Zc-z]{5}$`), toString(result))
+			},
+		},
+		{
+			expression: `rand_text_numeric(rand_int(5, 6), 123)`,
+			assert: func(t *testing.T, result interface{}) {
+				require.Regexp(t, regexp.MustCompile(`^[0456789]{5}$`), toString(result))
+			},
+		},
+		{
+			expression: `dec_to_hex(rand_int(16, 17))`,
+			assert: func(t *testing.T, result interface{}) {
+				require.Equal(t, "10", result)
+			},
+		},
+		{
+			expression: `date_time("%Y", to_unix_time("2022-01-13"))`,
+			assert: func(t *testing.T, result interface{}) {
+				require.Equal(t, "2022", result)
+			},
+		},
+		{
+			expression: `unix_time(rand_int(1, 2)) > unix_time()`,
+			assert: func(t *testing.T, result interface{}) {
+				require.Equal(t, true, result)
+			},
+		},
+		{
+			expression: `len(gzip_decode(gzip("hello world"), rand_int(1, 2)))`,
+			assert: func(t *testing.T, result interface{}) {
+				require.Equal(t, float64(1), result)
+			},
+		},
+		{
+			expression: `len(zlib_decode(zlib("hello world"), rand_int(1, 2)))`,
+			assert: func(t *testing.T, result interface{}) {
+				require.Equal(t, float64(1), result)
+			},
+		},
+		{
+			expression: `len(inflate(deflate("hello world"), rand_int(1, 2)))`,
+			assert: func(t *testing.T, result interface{}) {
+				require.Equal(t, float64(1), result)
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.expression, func(t *testing.T) {
+			result := evaluateExpression(t, test.expression)
+			test.assert(t, result)
+		})
+	}
+}
+
 func TestFakerDslExpressions(t *testing.T) {
 	zeroArgsFakerFunctions := []string{
 		"rand_ach_account_number",
