@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/govaluate"
 )
 
 type dslFunction struct {

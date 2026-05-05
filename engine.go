@@ -3,7 +3,7 @@ package dsl
 import (
 	"sync"
 
-	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/govaluate"
 )
 
 var defaultEngine *Engine

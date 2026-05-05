@@ -34,7 +34,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/govaluate"
 	"github.com/Mzack9999/gcache"
 	"github.com/asaskevich/govalidator"
 	"github.com/brianvoe/gofakeit/v7"

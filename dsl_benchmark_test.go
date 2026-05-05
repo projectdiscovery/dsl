@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/govaluate"
 )
 
 func BenchmarkDSLCaching(b *testing.B) {

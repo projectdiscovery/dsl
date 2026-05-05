@@ -5,7 +5,6 @@ go 1.24.1
 toolchain go1.24.2
 
 require (
-	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/brianvoe/gofakeit/v7 v7.2.1
@@ -57,6 +56,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.23 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
+	github.com/projectdiscovery/govaluate v0.0.0-20260504230327-80320480bb6e
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/sorairolake/lzip-go v0.3.8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
