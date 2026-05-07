@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Knetic/govaluate"
+	"github.com/projectdiscovery/govaluate"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
 )
