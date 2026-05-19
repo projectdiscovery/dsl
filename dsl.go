@@ -1634,6 +1634,8 @@ func init() {
 		}),
 	)
 
+	registerWappalyzerFunction()
+
 	DefaultHelperFunctions = HelperFunctions()
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
 }
