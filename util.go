@@ -373,7 +373,7 @@ func strToNumEntities(s string) string {
 		}
 
 		r := rune(escaped[i])
-		result.WriteString(fmt.Sprintf("&#%d;", int(r)))
+		fmt.Fprintf(&result, "&#%d;", int(r))
 		i++
 	}
 

@@ -1,0 +1,11 @@
+version: "2"
+
+linters:
+  settings:
+    govet:
+      # The 'inline' analyzer (new in Go 1.25 via golang.org/x/tools) reports
+      # generic call sites that it cannot statically inline. maps.Clone and a
+      # few other generic helpers trigger this even though the code is
+      # correct, so we disable it until type-parameter inference is supported.
+      disable:
+        - inline
