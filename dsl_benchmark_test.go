@@ -132,7 +132,7 @@ func BenchmarkDSLFunctionHash(b *testing.B) {
 		_, _ = sb.WriteString("-")
 
 		for i, arg := range args {
-			_, _ = sb.WriteString(fmt.Sprintf("%v", arg))
+			_, _ = fmt.Fprintf(&sb, "%v", arg)
 			if i < len(args)-1 {
 				_, _ = sb.WriteString(",")
 			}
