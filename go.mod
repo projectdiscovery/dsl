@@ -15,7 +15,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.68
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/mapcidr v1.1.97
-	github.com/projectdiscovery/utils v0.11.0
+	github.com/projectdiscovery/utils v0.11.1
 	github.com/sashabaranov/go-openai v1.37.0
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.10.0
@@ -25,7 +25,7 @@ require (
 	golang.org/x/text v0.36.0
 )
 
-require github.com/projectdiscovery/wappalyzergo v0.2.81 // indirect
+require github.com/projectdiscovery/wappalyzergo v0.2.81
 
 require (
 	github.com/STARRY-S/zip v0.2.3 // indirect
