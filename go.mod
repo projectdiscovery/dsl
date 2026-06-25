@@ -1,8 +1,6 @@
 module github.com/projectdiscovery/dsl
 
-go 1.24.1
-
-toolchain go1.24.2
+go 1.25.0
 
 require (
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
@@ -24,8 +22,10 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/vulncheck-oss/go-exploit v1.51.0
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
-	golang.org/x/text v0.32.0
+	golang.org/x/text v0.36.0
 )
+
+require github.com/projectdiscovery/wappalyzergo v0.2.81 // indirect
 
 require (
 	github.com/STARRY-S/zip v0.2.3 // indirect
@@ -67,10 +67,10 @@ require (
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
-	golang.org/x/mod v0.30.0 // indirect
-	golang.org/x/net v0.48.0 // indirect
-	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/tools v0.39.0 // indirect
+	golang.org/x/mod v0.34.0 // indirect
+	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/tools v0.43.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

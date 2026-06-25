@@ -332,6 +332,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	url_decode(arg1 interface{}) interface{}
 	url_encode(s string, optionalEncodeAllSpecialChars bool) string
 	wait_for(seconds uint)
+	wappalyzer(headers, body string) []string
 	xor(args ...interface{}) interface{}
 	zip(file_entry string, content string, ... ) []byte
 	zlib(arg1 interface{}) interface{}

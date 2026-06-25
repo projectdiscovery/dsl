@@ -510,7 +510,7 @@ func init() {
 					result.WriteRune(c)
 				} else {
 					for _, b := range []byte(string(c)) {
-						result.WriteString(fmt.Sprintf("%%%02X", b))
+						fmt.Fprintf(&result, "%%%02X", b)
 					}
 				}
 			}
@@ -1633,6 +1633,8 @@ func init() {
 			return base64.StdEncoding.EncodeToString(ciphertext), nil
 		}),
 	)
+
+	registerWappalyzerFunction()
 
 	DefaultHelperFunctions = HelperFunctions()
 	FunctionNames = GetFunctionNames(DefaultHelperFunctions)
