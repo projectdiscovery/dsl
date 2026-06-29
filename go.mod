@@ -22,10 +22,10 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/vulncheck-oss/go-exploit v1.51.0
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
-	golang.org/x/text v0.36.0
+	golang.org/x/text v0.37.0
 )
 
-require github.com/projectdiscovery/wappalyzergo v0.2.81
+require github.com/projectdiscovery/wappalyzergo v0.2.87
 
 require (
 	github.com/google/go-cmp v0.7.0 // indirect
@@ -54,10 +54,10 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/mod v0.34.0 // indirect
-	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/mod v0.35.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/tools v0.43.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/tools v0.44.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
