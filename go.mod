@@ -25,7 +25,7 @@ require (
 	golang.org/x/text v0.37.0
 )
 
-require github.com/projectdiscovery/wappalyzergo v0.2.91
+require github.com/projectdiscovery/wappalyzergo v0.2.92
 
 require (
 	github.com/google/go-cmp v0.7.0 // indirect
