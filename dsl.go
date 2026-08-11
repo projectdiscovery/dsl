@@ -81,6 +81,10 @@ var (
 	DefaultMaxDecompressionSize = int64(10 * 1024 * 1024) // 10MB
 	DefaultCacheSize            = 6144
 	resultCache                 = gcache.New[string, interface{}](DefaultCacheSize).Build()
+	// compiledRegexCache keeps compiled patterns, which are expensive to build
+	// and cheap to reuse. Bounded like resultCache so patterns assembled at
+	// runtime cannot grow it without limit.
+	compiledRegexCache = gcache.New[string, *regexp.Regexp](DefaultCacheSize).Build()
 
 	// Initialize faker functions
 	faker = gofakeit.New(0)
@@ -126,6 +130,28 @@ func MustAddFunction(function dslFunction) {
 	if err := AddFunction(function); err != nil {
 		panic(err)
 	}
+}
+
+// compileRegex returns the compiled form of pattern, reusing an earlier
+// compilation where there is one.
+//
+// The DSL functions taking a pattern are called once per response, so the
+// pattern repeats across a scan while the subject never does. Compiling on
+// every call was the largest single source of allocation in a long-running
+// scan. *regexp.Regexp is safe for concurrent use, so one compilation can be
+// shared by every caller.
+func compileRegex(pattern string) (*regexp.Regexp, error) {
+	if compiled, err := compiledRegexCache.GetIFPresent(pattern); err == nil {
+		return compiled, nil
+	}
+
+	compiled, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+	_ = compiledRegexCache.Set(pattern, compiled)
+
+	return compiled, nil
 }
 
 func init() {
@@ -280,7 +306,7 @@ func init() {
 		return strings.ReplaceAll(toString(args[0]), toString(args[1]), toString(args[2])), nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("replace_regex", 3, true, func(args ...interface{}) (interface{}, error) {
-		compiled, err := regexp.Compile(toString(args[1]))
+		compiled, err := compileRegex(toString(args[1]))
 		if err != nil {
 			return nil, err
 		}
@@ -771,7 +797,7 @@ func init() {
 			}
 		}))
 	MustAddFunction(NewWithPositionalArgs("regex", 2, true, func(args ...interface{}) (interface{}, error) {
-		compiled, err := regexp.Compile(toString(args[0]))
+		compiled, err := compileRegex(toString(args[0]))
 		if err != nil {
 			return nil, err
 		}
@@ -785,7 +811,7 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 
-			compiled, err := regexp.Compile(toString(args[0]))
+			compiled, err := compileRegex(toString(args[0]))
 			if err != nil {
 				return nil, err
 			}
@@ -807,7 +833,7 @@ func init() {
 			}
 
 			pattern := toString(args[0])
-			compiled, err := regexp.Compile(pattern)
+			compiled, err := compileRegex(pattern)
 			if err != nil {
 				return nil, err
 			}
