@@ -34,7 +34,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projectdiscovery/govaluate"
 	"github.com/Mzack9999/gcache"
 	"github.com/asaskevich/govalidator"
 	"github.com/brianvoe/gofakeit/v7"
@@ -48,6 +47,7 @@ import (
 	"github.com/projectdiscovery/dsl/randomip"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gostruct"
+	"github.com/projectdiscovery/govaluate"
 	"github.com/projectdiscovery/mapcidr"
 	"github.com/projectdiscovery/utils/conn/connpool"
 	jarm "github.com/projectdiscovery/utils/crypto/jarm"
@@ -80,11 +80,19 @@ var (
 
 	DefaultMaxDecompressionSize = int64(10 * 1024 * 1024) // 10MB
 	DefaultCacheSize            = 6144
-	resultCache                 = gcache.New[string, interface{}](DefaultCacheSize).Build()
-	// compiledRegexCache keeps compiled patterns, which are expensive to build
-	// and cheap to reuse. Bounded like resultCache so patterns assembled at
-	// runtime cannot grow it without limit.
-	compiledRegexCache = gcache.New[string, *regexp.Regexp](DefaultCacheSize).Build()
+	// DefaultRegexCacheSize bounds compiledRegexCache. Distinct regex patterns
+	// passed to the DSL helpers can far outnumber result-cache keys — a caller may
+	// reference tens of thousands of them — so the pattern cache is sized well
+	// above DefaultCacheSize to avoid evicting entries before they are reused. It
+	// is a ceiling, not a preallocation: memory scales with the patterns actually
+	// compiled, and a caller may lower or raise it to fit its own use.
+	DefaultRegexCacheSize = 200000
+	resultCache           = gcache.New[string, interface{}](DefaultCacheSize).Build()
+	// compiledRegexCache reuses compiled patterns across calls; compilation is
+	// expensive and *regexp.Regexp is safe for concurrent use. Bounded at
+	// DefaultRegexCacheSize so patterns assembled at runtime from input cannot grow
+	// it without limit.
+	compiledRegexCache = gcache.New[string, *regexp.Regexp](DefaultRegexCacheSize).Build()
 
 	// Initialize faker functions
 	faker = gofakeit.New(0)
@@ -135,11 +143,10 @@ func MustAddFunction(function dslFunction) {
 // compileRegex returns the compiled form of pattern, reusing an earlier
 // compilation where there is one.
 //
-// The DSL functions taking a pattern are called once per response, so the
-// pattern repeats across a scan while the subject never does. Compiling on
-// every call was the largest single source of allocation in a long-running
-// scan. *regexp.Regexp is safe for concurrent use, so one compilation can be
-// shared by every caller.
+// The DSL regex helpers are commonly called many times with the same pattern
+// but different subjects, so patterns repeat while subjects do not. Compiling
+// on every call is costly; *regexp.Regexp is safe for concurrent use, so one
+// compilation can be shared by every caller.
 func compileRegex(pattern string) (*regexp.Regexp, error) {
 	if compiled, err := compiledRegexCache.GetIFPresent(pattern); err == nil {
 		return compiled, nil
