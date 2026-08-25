@@ -169,6 +169,49 @@ func TestDSLURLEncodeDecode(t *testing.T) {
 	})
 }
 
+func TestDSLUnicodeEncodeDecode(t *testing.T) {
+	t.Run("round trip", func(t *testing.T) {
+		testCases := []struct {
+			name  string
+			input string
+		}{
+			{"ascii", "ok"},
+			{"chinese", "百度一下"},
+			{"mixed", "hello 世界 123"},
+			{"emoji astral plane", "🚀✨"},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				encoded, err := DefaultHelperFunctions["unicode_encode"](tc.input)
+				require.NoError(t, err, "unicode_encode should not error")
+
+				decoded, err := DefaultHelperFunctions["unicode_decode"](encoded)
+				require.NoError(t, err, "unicode_decode should not error")
+				require.Equal(t, tc.input, decoded, "unicode_decode should reverse unicode_encode")
+			})
+		}
+	})
+
+	t.Run("encode output", func(t *testing.T) {
+		encoded, err := DefaultHelperFunctions["unicode_encode"]("ok")
+		require.NoError(t, err)
+		require.Equal(t, `\u006f\u006b`, encoded)
+	})
+
+	t.Run("decode mixed text and escapes", func(t *testing.T) {
+		decoded, err := DefaultHelperFunctions["unicode_decode"](`hello \u4e16\u754c`)
+		require.NoError(t, err)
+		require.Equal(t, "hello 世界", decoded)
+	})
+
+	t.Run("decode without escapes is unchanged", func(t *testing.T) {
+		decoded, err := DefaultHelperFunctions["unicode_decode"]("plain text")
+		require.NoError(t, err)
+		require.Equal(t, "plain text", decoded)
+	})
+}
+
 func TestDSLTimeComparison(t *testing.T) {
 	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("unixtime() > not_after", DefaultHelperFunctions)
 	require.Nil(t, err, "could not compare time")
@@ -324,6 +367,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	trim_right(arg1, arg2 interface{}) interface{}
 	trim_space(arg1 interface{}) interface{}
 	trim_suffix(arg1, arg2 interface{}) interface{}
+	unicode_decode(arg1 interface{}) interface{}
+	unicode_encode(arg1 interface{}) interface{}
 	uniq(elements ...interface{}) []interface{}
 	uniq(input number) string
 	uniq(input string) string

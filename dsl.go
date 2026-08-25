@@ -72,6 +72,9 @@ var (
 
 	funcSignatureRegex = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
 
+	// unicodeEscapeRegex matches runs of \uXXXX and \UXXXXXXXX escape sequences
+	unicodeEscapeRegex = regexp.MustCompile(`(?:\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8})+`)
+
 	// ErrParsingArg is error when parsing value of argument
 	// Use With Caution: Nuclei ignores this error in extractors(ref: https://github.com/projectdiscovery/nuclei/issues/3950)
 	ErrParsingArg = errkit.New("error parsing argument value")
@@ -556,6 +559,27 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("hex_decode", 1, true, func(args ...interface{}) (interface{}, error) {
 		decodeString, err := hex.DecodeString(toString(args[0]))
 		return string(decodeString), err
+	}))
+	MustAddFunction(NewWithPositionalArgs("unicode_encode", 1, true, func(args ...interface{}) (interface{}, error) {
+		var result strings.Builder
+		for _, r := range toString(args[0]) {
+			if r > 0xFFFF {
+				fmt.Fprintf(&result, `\U%08x`, r)
+			} else {
+				fmt.Fprintf(&result, `\u%04x`, r)
+			}
+		}
+		return result.String(), nil
+	}))
+	MustAddFunction(NewWithPositionalArgs("unicode_decode", 1, true, func(args ...interface{}) (interface{}, error) {
+		// decode any \uXXXX / \UXXXXXXXX escape runs and leave the surrounding text untouched
+		result := unicodeEscapeRegex.ReplaceAllStringFunc(toString(args[0]), func(match string) string {
+			if unquoted, err := strconv.Unquote(`"` + match + `"`); err == nil {
+				return unquoted
+			}
+			return match
+		})
+		return result, nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("hmac", 3, true, func(args ...interface{}) (interface{}, error) {
 		hashAlgorithm := args[0]
