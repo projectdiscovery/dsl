@@ -46,7 +46,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/projectdiscovery/blackrock v0.0.1 // indirect
+	github.com/projectdiscovery/blackrock v0.0.2 // indirect
 	github.com/projectdiscovery/govaluate v0.0.0-20260504230327-80320480bb6e
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
