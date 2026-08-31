@@ -70,8 +70,8 @@ github.com/projectdiscovery/mapcidr v1.1.97 h1:7FkxNNVXp+m1rIu5Nv/2SrF9k4+LwP8Qu
 github.com/projectdiscovery/mapcidr v1.1.97/go.mod h1:9dgTJh1SP02gYZdpzMjm6vtYFkEHQHoTyaVNvaeJ7lA=
 github.com/projectdiscovery/utils v0.11.1 h1:PWj1KjIASxt8icxommH72C0TQqNOvGkcSODRkiq0SQw=
 github.com/projectdiscovery/utils v0.11.1/go.mod h1:yktGrHGk2CTjNiccXovnvGrLHX9sV2bqz9nSnbA3V8M=
-github.com/projectdiscovery/wappalyzergo v0.2.94 h1:uHyNIb5OFLzyvEd6v64JLoc7Dlg3dBSjlPyjCIz0+T8=
-github.com/projectdiscovery/wappalyzergo v0.2.94/go.mod h1:E2p8L90ysTTUkU5FUOgGoCQ7ucEUgqJ/tvYgiGGAlEM=
+github.com/projectdiscovery/wappalyzergo v0.2.95 h1:XHjbQVrrxusezFq7ciWmtznPKWhpr/srWp7Yk2noxqg=
+github.com/projectdiscovery/wappalyzergo v0.2.95/go.mod h1:E2p8L90ysTTUkU5FUOgGoCQ7ucEUgqJ/tvYgiGGAlEM=
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
 github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d h1:hrujxIzL1woJ7AwssoOcM/tq5JjjG2yYOc8odClEiXA=
