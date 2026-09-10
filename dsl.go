@@ -1496,7 +1496,7 @@ func init() {
 			return nil, err
 		}
 		// pick the first available proxy from common env vars (case-insensitive)
-		proxy := firstNonEmptyEnv("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy")
+		proxy := jarmProxyFromEnvironment()
 		return coalesceJARM(proxy+"\x00"+host, func() (string, error) {
 			if proxy != "" {
 				socks5Dialer, err := connpool.NewCreateSOCKS5Dialer(proxy)
