@@ -34,7 +34,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projectdiscovery/govaluate"
 	"github.com/Mzack9999/gcache"
 	"github.com/asaskevich/govalidator"
 	"github.com/brianvoe/gofakeit/v7"
@@ -48,6 +47,7 @@ import (
 	"github.com/projectdiscovery/dsl/randomip"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gostruct"
+	"github.com/projectdiscovery/govaluate"
 	"github.com/projectdiscovery/mapcidr"
 	"github.com/projectdiscovery/utils/conn/connpool"
 	jarm "github.com/projectdiscovery/utils/crypto/jarm"
@@ -1497,14 +1497,16 @@ func init() {
 		}
 		// pick the first available proxy from common env vars (case-insensitive)
 		proxy := firstNonEmptyEnv("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy")
-		if proxy != "" {
-			socks5Dialer, err := connpool.NewCreateSOCKS5Dialer(proxy)
-			if err != nil {
-				return nil, err
+		return coalesceJARM(proxy+"\x00"+host, func() (string, error) {
+			if proxy != "" {
+				socks5Dialer, err := connpool.NewCreateSOCKS5Dialer(proxy)
+				if err != nil {
+					return "", err
+				}
+				return jarm.HashWithDialer(socks5Dialer, hostname, port, 10)
 			}
-			return jarm.HashWithDialer(socks5Dialer, hostname, port, 10)
-		}
-		return jarm.HashWithDialer(nil, hostname, port, 10)
+			return jarm.HashWithDialer(nil, hostname, port, 10)
+		})
 	}))
 
 	MustAddFunction(NewWithSingleSignature("count",
