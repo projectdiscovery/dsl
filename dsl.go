@@ -1497,14 +1497,16 @@ func init() {
 		}
 		// pick the first available proxy from common env vars (case-insensitive)
 		proxy := firstNonEmptyEnv("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy")
-		if proxy != "" {
-			socks5Dialer, err := connpool.NewCreateSOCKS5Dialer(proxy)
-			if err != nil {
-				return nil, err
+		return coalesceJARM(proxy+"\x00"+host, func() (string, error) {
+			if proxy != "" {
+				socks5Dialer, err := connpool.NewCreateSOCKS5Dialer(proxy)
+				if err != nil {
+					return "", err
+				}
+				return jarm.HashWithDialer(socks5Dialer, hostname, port, 10)
 			}
-			return jarm.HashWithDialer(socks5Dialer, hostname, port, 10)
-		}
-		return jarm.HashWithDialer(nil, hostname, port, 10)
+			return jarm.HashWithDialer(nil, hostname, port, 10)
+		})
 	}))
 
 	MustAddFunction(NewWithSingleSignature("count",
