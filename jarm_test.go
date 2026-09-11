@@ -1,6 +1,7 @@
 package dsl
 
 import (
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -60,22 +61,28 @@ func TestCoalesceJARMDoesNotCacheCompletedFingerprint(t *testing.T) {
 
 func TestJARMProxyPrefersConfiguredSOCKS5Route(t *testing.T) {
 	t.Setenv("SOCKS5_PROXY", "socks5://scan-route.example:1080")
-	t.Setenv("socks5_proxy", "socks5://lowercase.example:1080")
 	t.Setenv("HTTP_PROXY", "socks5://legacy-http.example:1080")
-	t.Setenv("http_proxy", "socks5://legacy-http-lower.example:1080")
 	t.Setenv("HTTPS_PROXY", "socks5://legacy-https.example:1080")
-	t.Setenv("https_proxy", "socks5://legacy-https-lower.example:1080")
+	if runtime.GOOS != "windows" {
+		// Windows environment variable names are case-insensitive, so setting
+		// these aliases would overwrite the uppercase variables above.
+		t.Setenv("socks5_proxy", "socks5://lowercase.example:1080")
+		t.Setenv("http_proxy", "socks5://legacy-http-lower.example:1080")
+		t.Setenv("https_proxy", "socks5://legacy-https-lower.example:1080")
+	}
 
 	require.Equal(t, "socks5://scan-route.example:1080", jarmProxyFromEnvironment())
 }
 
 func TestJARMProxyRetainsLegacyFallback(t *testing.T) {
 	t.Setenv("SOCKS5_PROXY", "")
-	t.Setenv("socks5_proxy", "")
 	t.Setenv("HTTP_PROXY", "socks5://legacy.example:1080")
-	t.Setenv("http_proxy", "")
 	t.Setenv("HTTPS_PROXY", "")
-	t.Setenv("https_proxy", "")
+	if runtime.GOOS != "windows" {
+		t.Setenv("socks5_proxy", "")
+		t.Setenv("http_proxy", "")
+		t.Setenv("https_proxy", "")
+	}
 
 	require.Equal(t, "socks5://legacy.example:1080", jarmProxyFromEnvironment())
 }
