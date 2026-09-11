@@ -21,6 +21,11 @@ const (
 	envBaseURL = "LLM_BASE_URL"
 	envModel   = "LLM_MODEL"
 
+	// envAPIKey is the shared layer's key var; envLegacyAPIKey keeps the old
+	// llm_prompt behaviour working for callers that still set OPENAI_API_KEY.
+	envAPIKey       = "LLM_API_KEY"
+	envLegacyAPIKey = "OPENAI_API_KEY"
+
 	defaultModel   = "gpt-4o-mini"
 	defaultTimeout = 30 * time.Second
 )
@@ -46,6 +51,7 @@ func client(model string) (*utilsllm.Client, error) {
 	c, err := utilsllm.New(utilsllm.Config{
 		BaseURL: baseURL,
 		Model:   model,
+		APIKey:  apiKey(),
 		Cache:   true,
 		Timeout: defaultTimeout,
 	})
@@ -56,6 +62,16 @@ func client(model string) (*utilsllm.Client, error) {
 	clients[key] = c
 
 	return c, nil
+}
+
+// apiKey resolves the provider key, preferring the shared LLM_API_KEY and
+// falling back to OPENAI_API_KEY so existing llm_prompt setups keep working.
+func apiKey() string {
+	if key := os.Getenv(envAPIKey); key != "" {
+		return key
+	}
+
+	return os.Getenv(envLegacyAPIKey)
 }
 
 // Query runs a prompt and returns the completion. The model falls back to
