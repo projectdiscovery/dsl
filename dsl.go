@@ -57,7 +57,6 @@ import (
 	maputils "github.com/projectdiscovery/utils/maps"
 	randint "github.com/projectdiscovery/utils/rand"
 	stringsutil "github.com/projectdiscovery/utils/strings"
-	"github.com/sashabaranov/go-openai"
 	"github.com/spaolacci/murmur3"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -1389,7 +1388,7 @@ func init() {
 		return formattedIps[0], nil
 	}))
 	MustAddFunction(NewWithSingleSignature("llm_prompt",
-		"(prompt string, optionalModel string) string",
+		"(prompt string, optionalModel string, optionalJSON bool) string",
 		false,
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 1 {
@@ -1401,14 +1400,23 @@ func init() {
 				return nil, errors.New("invalid prompt")
 			}
 
-			model := openai.GPT4oMini // default model
-			if len(args) == 2 {
+			// model and json are optional; an empty model lets the llm layer
+			// apply its default (or the LLM_MODEL env override)
+			var model string
+			if len(args) >= 2 {
 				if model, ok = args[1].(string); !ok {
 					return nil, errors.New("invalid model")
 				}
 			}
 
-			return llm.Query(prompt, model)
+			var asJSON bool
+			if len(args) >= 3 {
+				if asJSON, ok = args[2].(bool); !ok {
+					return nil, errors.New("invalid json flag")
+				}
+			}
+
+			return llm.QueryJSON(prompt, model, asJSON)
 		}))
 	MustAddFunction(NewWithPositionalArgs("unpack", 2, true, func(args ...interface{}) (interface{}, error) {
 		// format as string (ref: https://docs.python.org/3/library/struct.html#format-characters)
