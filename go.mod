@@ -12,10 +12,10 @@ require (
 	github.com/kataras/jwt v0.1.8
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/gologger v1.1.72
+	github.com/projectdiscovery/gologger v1.1.73
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/mapcidr v1.1.97
-	github.com/projectdiscovery/utils v0.11.4-0.20260911153819-02811729e1f0
+	github.com/projectdiscovery/utils v0.11.9
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cast v1.10.0
 	github.com/stretchr/testify v1.12.1
@@ -28,6 +28,7 @@ require github.com/projectdiscovery/wappalyzergo v0.3.5
 
 require (
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/projectdiscovery/jarm-go v0.0.0-20260910160638-430e2bae86f6 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 )
 
@@ -36,7 +37,6 @@ require (
 	github.com/djherbis/times v1.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
-	github.com/hdm/jarm-go v0.0.7 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/logrusorgru/aurora/v4 v4.0.0 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
