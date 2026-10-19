@@ -1636,7 +1636,8 @@ func init() {
 				return nil, errors.New("not an RSA public key")
 			}
 
-			ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, rsaPub, []byte(plaintext))
+			// Templates expect PKCS #1 v1.5 ciphertext. Go 1.26 deprecates this primitive.
+			ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, rsaPub, []byte(plaintext)) //nolint:staticcheck // SA1019
 			if err != nil {
 				return nil, fmt.Errorf("RSA encryption failed: %w", err)
 			}
