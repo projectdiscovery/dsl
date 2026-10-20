@@ -504,13 +504,16 @@ func init() {
 			}
 
 			var result strings.Builder
-			for _, c := range s {
-				if shouldEscape(c, encodeAllChars) {
-					result.WriteRune(c)
+			// Percent-encoding is defined over bytes, so walk the string a byte
+			// at a time. Ranging over runes turned every byte that is not valid
+			// UTF-8 into U+FFFD, so binary input came back out as %EF%BF%BD and
+			// the original bytes were gone. Every character kept literally is
+			// ASCII, so the byte and the rune agree on that side.
+			for i := 0; i < len(s); i++ {
+				if c := s[i]; shouldEscape(rune(c), encodeAllChars) {
+					result.WriteByte(c)
 				} else {
-					for _, b := range []byte(string(c)) {
-						fmt.Fprintf(&result, "%%%02X", b)
-					}
+					fmt.Fprintf(&result, "%%%02X", c)
 				}
 			}
 			return result.String(), nil

@@ -167,6 +167,56 @@ func TestDSLURLEncodeDecode(t *testing.T) {
 			})
 		}
 	})
+
+	// Templates hand url_encode the output of gzip, aes_cbc and hex_decode,
+	// none of which is valid UTF-8. Those bytes have to survive the round trip.
+	t.Run("Bytes that are not valid UTF-8", func(t *testing.T) {
+		testCases := []struct {
+			name     string
+			input    string
+			expected string
+		}{
+			{
+				name:     "lone continuation byte",
+				input:    "\x80",
+				expected: "%80",
+			},
+			{
+				name:     "bytes no encoder produces",
+				input:    "\xfe\xff",
+				expected: "%FE%FF",
+			},
+			{
+				name:     "truncated multi-byte sequence",
+				input:    "\xe3\x81",
+				expected: "%E3%81",
+			},
+			{
+				name:     "binary mixed with ascii",
+				input:    "id=\x00\x8f\x9a",
+				expected: "id%3D%00%8F%9A",
+			},
+			{
+				name:     "gzip header",
+				input:    "\x1f\x8b\x08\x00",
+				expected: "%1F%8B%08%00",
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				for _, encodeAll := range []bool{false, true} {
+					encoded, err := DefaultHelperFunctions["url_encode"](tc.input, encodeAll)
+					require.NoError(t, err, "url_encode should not error")
+					require.Equal(t, tc.expected, encoded, "url_encode should encode the bytes it was given")
+
+					decoded, err := DefaultHelperFunctions["url_decode"](encoded)
+					require.NoError(t, err, "url_decode should not error")
+					require.Equal(t, tc.input, decoded, "url_decode should reverse url_encode byte for byte")
+				}
+			})
+		}
+	})
 }
 
 func TestDSLTimeComparison(t *testing.T) {
