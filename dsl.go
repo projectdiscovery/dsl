@@ -33,6 +33,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf16"
+	"unicode/utf8"
 
 	"github.com/Mzack9999/gcache"
 	"github.com/asaskevich/govalidator"
@@ -71,8 +73,9 @@ var (
 
 	funcSignatureRegex = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
 
-	// unicodeEscapeRegex matches runs of \uXXXX and \UXXXXXXXX escape sequences
-	unicodeEscapeRegex = regexp.MustCompile(`(?:\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8})+`)
+	// unicodeEscapeRegex matches a single escape, trying a UTF-16 surrogate pair
+	// first so JSON-style astral runes ("\ud83d\ude80") decode as one rune
+	unicodeEscapeRegex = regexp.MustCompile(`\\u[dD][89abAB][0-9a-fA-F]{2}\\u[dD][c-fC-F][0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8}`)
 
 	// ErrParsingArg is error when parsing value of argument
 	// Use With Caution: Nuclei ignores this error in extractors(ref: https://github.com/projectdiscovery/nuclei/issues/3950)
@@ -560,23 +563,26 @@ func init() {
 		return string(decodeString), err
 	}))
 	MustAddFunction(NewWithPositionalArgs("unicode_encode", 1, true, func(args ...interface{}) (interface{}, error) {
+		// UTF-16 code units, as JSON and JavaScript escape runes outside the BMP
 		var result strings.Builder
-		for _, r := range toString(args[0]) {
-			if r > 0xFFFF {
-				fmt.Fprintf(&result, `\U%08x`, r)
-			} else {
-				fmt.Fprintf(&result, `\u%04x`, r)
-			}
+		for _, u := range utf16.Encode([]rune(toString(args[0]))) {
+			fmt.Fprintf(&result, `\u%04x`, u)
 		}
 		return result.String(), nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("unicode_decode", 1, true, func(args ...interface{}) (interface{}, error) {
-		// decode any \uXXXX / \UXXXXXXXX escape runs and leave the surrounding text untouched
+		// lone surrogates and out-of-range code points are left as written
 		result := unicodeEscapeRegex.ReplaceAllStringFunc(toString(args[0]), func(match string) string {
-			if unquoted, err := strconv.Unquote(`"` + match + `"`); err == nil {
-				return unquoted
+			r := hexRune(match[2:6])
+			if len(match) == 12 {
+				r = utf16.DecodeRune(r, hexRune(match[8:]))
+			} else if match[1] == 'U' {
+				r = hexRune(match[2:])
 			}
-			return match
+			if !utf8.ValidRune(r) {
+				return match
+			}
+			return string(r)
 		})
 		return result, nil
 	}))

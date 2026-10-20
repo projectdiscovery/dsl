@@ -194,9 +194,25 @@ func TestDSLUnicodeEncodeDecode(t *testing.T) {
 	})
 
 	t.Run("encode output", func(t *testing.T) {
-		encoded, err := DefaultHelperFunctions["unicode_encode"]("ok")
+		encoded, err := DefaultHelperFunctions["unicode_encode"]("ok🚀")
 		require.NoError(t, err)
-		require.Equal(t, `\u006f\u006b`, encoded)
+		require.Equal(t, `\u006f\u006b\ud83d\ude80`, encoded)
+	})
+
+	t.Run("decode", func(t *testing.T) {
+		testCases := map[string]string{
+			`\ud83d\ude80`:             "🚀",
+			`\u767e\uD83D\uDE80\u4e00`: "百🚀一",
+			`\U0001F680`:               "🚀",
+			`\u767e\ud83d\u5ea6`:       `百\ud83d度`,
+			`\U00110000`:               `\U00110000`,
+			`\ua\u662f`:                `\ua是`,
+		}
+		for input, expected := range testCases {
+			decoded, err := DefaultHelperFunctions["unicode_decode"](input)
+			require.NoError(t, err)
+			require.Equal(t, expected, decoded, input)
+		}
 	})
 
 	t.Run("decode mixed text and escapes", func(t *testing.T) {
