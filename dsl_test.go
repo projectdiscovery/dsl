@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"regexp"
+	"sort"
 	"testing"
 	"time"
 
@@ -192,6 +193,72 @@ func TestDSLGzipSerialize(t *testing.T) {
 	require.Nil(t, err, "could not evaluate decoded data")
 
 	require.Equal(t, "hello world", data.(string), "could not get gzip encoded data")
+}
+
+// govaluate hands every numeric literal over as a float64, so a template can
+// reach any helper with one. Returning an error is fine, panicking is not: the
+// panic leaves the helper, crosses govaluate and takes the scan down with it.
+func TestHelpersDoNotPanicOnNumericArgument(t *testing.T) {
+	// These reach the network or block, so they are exercised elsewhere.
+	skip := map[string]bool{
+		"public_ip": true, "publicip": true,
+		"llm_prompt": true, "llmprompt": true,
+		"wait_for": true, "waitfor": true,
+		"jarm": true,
+	}
+
+	names := make([]string, 0, len(DefaultHelperFunctions))
+	for name := range DefaultHelperFunctions {
+		if !skip[name] {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			for arity := 1; arity <= 4; arity++ {
+				args := make([]interface{}, arity)
+				for i := range args {
+					args[i] = float64(1234)
+				}
+				require.NotPanicsf(t, func() {
+					_, _ = DefaultHelperFunctions[name](args...)
+				}, "%s panicked on %d numeric argument(s)", name, arity)
+			}
+		})
+	}
+}
+
+// aes_cbc dropped the error from aes.NewCipher, so a key of the wrong length
+// left a nil block for NewCBCEncrypter to dereference. NewCBCEncrypter panics
+// on a mismatched IV too. Neither needs an odd argument type to reach.
+func TestAesCbcRejectsBadKeyAndIV(t *testing.T) {
+	const plaintext = "secret"
+	const validKey = "0123456789abcdef"
+	const validIV = "0123456789abcdef"
+
+	t.Run("valid key and iv", func(t *testing.T) {
+		out, err := DefaultHelperFunctions["aes_cbc"](plaintext, validKey, validIV)
+		require.NoError(t, err)
+		require.Equal(t, "308eed5be66233adf4b3b7a780169a4e", fmt.Sprintf("%x", out))
+	})
+
+	for _, tc := range []struct {
+		name, key, iv string
+	}{
+		{name: "short key", key: "shortkey", iv: validIV},
+		{name: "empty key", key: "", iv: validIV},
+		{name: "short iv", key: validKey, iv: "shortiv"},
+		{name: "empty iv", key: validKey, iv: ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NotPanics(t, func() {
+				_, err := DefaultHelperFunctions["aes_cbc"](plaintext, tc.key, tc.iv)
+				require.Error(t, err, "a bad key or iv should be reported, not panicked on")
+			})
+		})
+	}
 }
 
 func TestDslFunctionSignatures(t *testing.T) {

@@ -312,7 +312,7 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("gzip", 1, true, func(args ...interface{}) (interface{}, error) {
 		buffer := &bytes.Buffer{}
 		writer := gzip.NewWriter(buffer)
-		if _, err := writer.Write([]byte(args[0].(string))); err != nil {
+		if _, err := writer.Write([]byte(toString(args[0]))); err != nil {
 			_ = writer.Close()
 			return "", err
 		}
@@ -357,7 +357,7 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("zlib", 1, true, func(args ...interface{}) (interface{}, error) {
 		buffer := &bytes.Buffer{}
 		writer := zlib.NewWriter(buffer)
-		if _, err := writer.Write([]byte(args[0].(string))); err != nil {
+		if _, err := writer.Write([]byte(toString(args[0]))); err != nil {
 			_ = writer.Close()
 			return "", err
 		}
@@ -406,7 +406,7 @@ func init() {
 		if err != nil {
 			return "", err
 		}
-		if _, err := writer.Write([]byte(args[0].(string))); err != nil {
+		if _, err := writer.Write([]byte(toString(args[0]))); err != nil {
 			_ = writer.Close()
 			return "", err
 		}
@@ -558,8 +558,8 @@ func init() {
 	}))
 	MustAddFunction(NewWithPositionalArgs("hmac", 3, true, func(args ...interface{}) (interface{}, error) {
 		hashAlgorithm := args[0]
-		data := args[1].(string)
-		secretKey := args[2].(string)
+		data := toString(args[1])
+		secretKey := toString(args[2])
 
 		var hashFunction func() hash.Hash
 		switch hashAlgorithm {
@@ -991,22 +991,22 @@ func init() {
 			}
 			var cidrs []string
 			for _, arg := range args {
-				cidrs = append(cidrs, arg.(string))
+				cidrs = append(cidrs, toString(arg))
 			}
 			return randomip.GetRandomIPWithCidr(cidrs...)
 		}))
 	MustAddFunction(NewWithPositionalArgs("generate_java_gadget", 3, true, func(args ...interface{}) (interface{}, error) {
-		gadget := args[0].(string)
-		cmd := args[1].(string)
-		encoding := args[2].(string)
+		gadget := toString(args[0])
+		cmd := toString(args[1])
+		encoding := toString(args[2])
 		data := deserialization.GenerateJavaGadget(gadget, cmd, encoding)
 		return data, nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("generate_dotnet_gadget", 4, true, func(args ...interface{}) (interface{}, error) {
-		gadget := args[0].(string)
-		cmd := args[1].(string)
-		formatter := args[2].(string)
-		encoding := args[3].(string)
+		gadget := toString(args[0])
+		cmd := toString(args[1])
+		formatter := toString(args[2])
+		encoding := toString(args[3])
 		data := deserialization.GenerateDotNetGadget(gadget, cmd, formatter, encoding)
 		return data, nil
 	}))
@@ -1233,18 +1233,29 @@ func init() {
 			return argStr[start:end], nil
 		}))
 	MustAddFunction(NewWithPositionalArgs("aes_cbc", 3, false, func(args ...interface{}) (interface{}, error) {
-		bKey := []byte(args[1].(string))
-		bIV := []byte(args[2].(string))
-		bPlaintext := pkcs5padding([]byte(args[0].(string)), aes.BlockSize, len(args[0].(string)))
-		block, _ := aes.NewCipher(bKey)
+		bKey := []byte(toString(args[1]))
+		bIV := []byte(toString(args[2]))
+		plaintext := toString(args[0])
+		bPlaintext := pkcs5padding([]byte(plaintext), aes.BlockSize, len(plaintext))
+		// Dropping this error left block nil, and NewCBCEncrypter below then
+		// dereferenced it, so any key that was not 16, 24 or 32 bytes took the
+		// whole run down instead of reporting a bad key.
+		block, err := aes.NewCipher(bKey)
+		if err != nil {
+			return nil, err
+		}
+		// NewCBCEncrypter panics on a mismatched IV, so check it here.
+		if len(bIV) != aes.BlockSize {
+			return nil, fmt.Errorf("iv must be %d bytes, got %d", aes.BlockSize, len(bIV))
+		}
 		ciphertext := make([]byte, len(bPlaintext))
 		mode := cipher.NewCBCEncrypter(block, bIV)
 		mode.CryptBlocks(ciphertext, bPlaintext)
 		return ciphertext, nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("aes_gcm", 2, false, func(args ...interface{}) (interface{}, error) {
-		key := args[0].(string)
-		value := args[1].(string)
+		key := toString(args[0])
+		value := toString(args[1])
 
 		c, err := aes.NewCipher([]byte(key))
 		if nil != err {
@@ -1279,7 +1290,7 @@ func init() {
 			if argSize < 2 || argSize > 4 {
 				return nil, ErrInvalidDslFunction
 			}
-			jsonString := args[0].(string)
+			jsonString := toString(args[0])
 
 			err := json.Unmarshal([]byte(jsonString), &jsonData)
 			if err != nil {
@@ -1287,7 +1298,7 @@ func init() {
 			}
 
 			var jwtAlgorithm jwt.Alg
-			alg := args[1].(string)
+			alg := toString(args[1])
 			algorithm = strings.ToUpper(alg)
 
 			switch algorithm {
@@ -1329,7 +1340,7 @@ func init() {
 			}
 
 			if argSize > 2 {
-				optionalSignature = []byte(args[2].(string))
+				optionalSignature = []byte(toString(args[2]))
 			}
 
 			if argSize > 3 {
@@ -1351,7 +1362,7 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("json_minify", 1, true, func(args ...interface{}) (interface{}, error) {
 		var data map[string]interface{}
 
-		err := json.Unmarshal([]byte(args[0].(string)), &data)
+		err := json.Unmarshal([]byte(toString(args[0])), &data)
 		if err != nil {
 			return nil, err
 		}
@@ -1366,7 +1377,7 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("json_prettify", 1, true, func(args ...interface{}) (interface{}, error) {
 		var buf bytes.Buffer
 
-		err := json.Indent(&buf, []byte(args[0].(string)), "", "    ")
+		err := json.Indent(&buf, []byte(toString(args[0])), "", "    ")
 		if err != nil {
 			return nil, err
 		}
