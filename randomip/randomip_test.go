@@ -123,3 +123,37 @@ func TestGetRandomIp(t *testing.T) {
 		})
 	}
 }
+
+// An invalid cidr used to be reported only when the draw happened to land on
+// it, so the same call failed intermittently and the error named a different
+// cidr each time.
+func TestGetRandomIPWithCidrRejectsInvalidRegardlessOfDraw(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		cidrs []string
+		want  string
+	}{
+		{name: "invalid second", cidrs: []string{"10.0.0.0/8", "not-a-cidr"}, want: "not-a-cidr"},
+		{name: "invalid first", cidrs: []string{"not-a-cidr", "10.0.0.0/8"}, want: "not-a-cidr"},
+		{name: "invalid among many", cidrs: []string{"10.0.0.0/8", "192.168.0.0/16", "nope", "172.16.0.0/12"}, want: "nope"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Repeated so a draw that avoids the invalid entry cannot pass by luck.
+			for i := 0; i < 50; i++ {
+				_, err := GetRandomIPWithCidr(tc.cidrs...)
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.want)
+			}
+		})
+	}
+}
+
+func TestGetRandomIPWithCidrStillDrawsFromAllValid(t *testing.T) {
+	seen := map[bool]bool{}
+	for i := 0; i < 200; i++ {
+		ip, err := GetRandomIPWithCidr("10.0.0.0/8", "192.168.0.0/16")
+		require.NoError(t, err)
+		seen[ip.String()[:2] == "10"] = true
+	}
+	require.Len(t, seen, 2, "both cidrs should still be drawn from")
+}
