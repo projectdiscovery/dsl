@@ -314,6 +314,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	to_bool(arg1 interface{}) interface{}
 	to_lower(arg1 interface{}) interface{}
 	to_number(arg1 interface{}) interface{}
+	to_slug(arg1 interface{}) interface{}
 	to_string(arg1 interface{}) interface{}
 	to_title(s, optionalLang string) string
 	to_unix_time(input string, optionalLayout string) int64
@@ -384,6 +385,8 @@ func TestDslExpressions(t *testing.T) {
 		`to_bool(0)`:                              false,
 		`to_bool("x")`:                            false,
 		`to_lower("HELLO")`:                       "hello",
+		`to_slug("Screenshot-https://www.nytimes.com/-2024-09-13")`: "Screenshot-https-www-nytimes-com-2024-09-13",
+		`to_slug("  héllo,  wörld!! ")`:                            "héllo-wörld",
 		`to_upper("hello")`:                       "HELLO",
 		`trim("aaaHelloddd", "ad")`:               "Hello",
 		`trim_left("aaaHelloddd", "ad")`:          "Helloddd",
