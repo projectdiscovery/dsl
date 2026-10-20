@@ -194,6 +194,27 @@ func TestDSLGzipSerialize(t *testing.T) {
 	require.Equal(t, "hello world", data.(string), "could not get gzip encoded data")
 }
 
+// Every other encoding helper stringifies whatever it is handed, and a
+// template reaches all of them through govaluate, which turns a numeric
+// literal into a float64.
+func TestHexEncodeAcceptsNumbers(t *testing.T) {
+	for _, tc := range []struct {
+		expression string
+		expected   string
+	}{
+		{expression: `hex_encode("1234")`, expected: "31323334"},
+		{expression: `hex_encode(1234)`, expected: "31323334"},
+		{expression: `hex_encode(1234, "x")`, expected: `\x31\x32\x33\x34`},
+		{expression: `hex_decode(hex_encode(1234))`, expected: "1234"},
+		// The convention this follows.
+		{expression: `base64(1234)`, expected: "MTIzNA=="},
+	} {
+		t.Run(tc.expression, func(t *testing.T) {
+			require.Equal(t, tc.expected, evaluateExpression(t, tc.expression))
+		})
+	}
+}
+
 func TestDslFunctionSignatures(t *testing.T) {
 	createSignatureError := func(signature string) string {
 		return fmt.Errorf("%w. correct method signature %q", ErrInvalidDslFunction, signature).Error()

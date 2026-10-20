@@ -542,7 +542,12 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 
-			data := args[0]
+			// hexutil.Encode takes any but only reads a string or a []byte,
+			// and returns "" for anything else. govaluate hands a numeric
+			// literal over as a float64, so hex_encode(1234) used to come back
+			// empty, while base64 and md5 encode the digits like every other
+			// helper here does.
+			data := toString(args[0])
 			if len(args) == 1 {
 				// Default behavior: standard hex format
 				return hexutil.Encode(data), nil
