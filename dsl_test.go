@@ -169,6 +169,54 @@ func TestDSLURLEncodeDecode(t *testing.T) {
 	})
 }
 
+func TestDSLHTMLEscapeNumericEntities(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "ascii is one reference per character",
+			input:    "ab",
+			expected: "&#97;&#98;",
+		},
+		{
+			name:     "cjk",
+			input:    "こ",
+			expected: "&#12371;",
+		},
+		{
+			name:     "outside the basic multilingual plane",
+			input:    "🚀",
+			expected: "&#128640;",
+		},
+		{
+			name:     "multi-byte characters stay separate",
+			input:    "こん",
+			expected: "&#12371;&#12435;",
+		},
+		{
+			// The escaping pass already has a named entity for this one, so it
+			// reaches the loop as an entity and is copied across untouched.
+			name:     "named entity from the escaping pass is left alone",
+			input:    "<é>",
+			expected: "&lt;&eacute;&gt;",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			escaped, err := DefaultHelperFunctions["html_escape"](tc.input, true)
+			require.NoError(t, err, "html_escape should not error")
+			require.Equal(t, tc.expected, escaped, "html_escape should name the code point")
+
+			unescaped, err := DefaultHelperFunctions["html_unescape"](escaped)
+			require.NoError(t, err, "html_unescape should not error")
+			require.Equal(t, tc.input, unescaped, "html_unescape should reverse html_escape")
+		})
+	}
+}
+
 func TestDSLTimeComparison(t *testing.T) {
 	compiled, err := govaluate.NewEvaluableExpressionWithFunctions("unixtime() > not_after", DefaultHelperFunctions)
 	require.Nil(t, err, "could not compare time")
