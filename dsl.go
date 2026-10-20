@@ -486,12 +486,11 @@ func init() {
 			s := toString(args[0])
 
 			if len(args) > 1 {
-				switch v := args[1].(type) {
-				case bool:
-					encodeAllChars = v
-				case int, int64:
-					encodeAllChars = v == 1
-				}
+				// govaluate hands a numeric literal over as float64, which the
+				// type switch that used to live here did not cover, so
+				// url_encode(s, 1) inside a template quietly kept the default
+				// behaviour. toBool is what the other helpers take flags with.
+				encodeAllChars = toBool(args[1])
 			}
 
 			shouldEscape := func(c rune, encodeAllChars bool) bool {

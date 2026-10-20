@@ -167,6 +167,30 @@ func TestDSLURLEncodeDecode(t *testing.T) {
 			})
 		}
 	})
+
+	// The cases above call the helper directly, so they see the Go types the
+	// test writes. A template reaches the same helper through govaluate, which
+	// turns 1 into a float64 and leaves a quoted flag a string, so the flag has
+	// to be read the same way on both paths.
+	t.Run("Flag spellings through the evaluator", func(t *testing.T) {
+		const input = "a b-c"
+		for _, tc := range []struct {
+			flag     string
+			expected string
+		}{
+			{flag: "", expected: "a%20b-c"},
+			{flag: ", false", expected: "a%20b-c"},
+			{flag: ", true", expected: "a%20b%2Dc"},
+			{flag: ", 1", expected: "a%20b%2Dc"},
+			{flag: ", 0", expected: "a%20b-c"},
+			{flag: `, "true"`, expected: "a%20b%2Dc"},
+		} {
+			expression := fmt.Sprintf("url_encode(%q%s)", input, tc.flag)
+			t.Run(expression, func(t *testing.T) {
+				require.Equal(t, tc.expected, evaluateExpression(t, expression))
+			})
+		}
+	})
 }
 
 func TestDSLTimeComparison(t *testing.T) {
