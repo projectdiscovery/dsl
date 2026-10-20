@@ -34,7 +34,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projectdiscovery/govaluate"
 	"github.com/Mzack9999/gcache"
 	"github.com/asaskevich/govalidator"
 	"github.com/brianvoe/gofakeit/v7"
@@ -48,6 +47,7 @@ import (
 	"github.com/projectdiscovery/dsl/randomip"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gostruct"
+	"github.com/projectdiscovery/govaluate"
 	"github.com/projectdiscovery/mapcidr"
 	"github.com/projectdiscovery/utils/conn/connpool"
 	jarm "github.com/projectdiscovery/utils/crypto/jarm"
@@ -57,7 +57,6 @@ import (
 	maputils "github.com/projectdiscovery/utils/maps"
 	randint "github.com/projectdiscovery/utils/rand"
 	stringsutil "github.com/projectdiscovery/utils/strings"
-	"github.com/sashabaranov/go-openai"
 	"github.com/spaolacci/murmur3"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -1413,7 +1412,7 @@ func init() {
 		return formattedIps[0], nil
 	}))
 	MustAddFunction(NewWithSingleSignature("llm_prompt",
-		"(prompt string, optionalModel string) string",
+		"(prompt string, optionalModel string, optionalJSON bool) string",
 		false,
 		func(args ...interface{}) (interface{}, error) {
 			if len(args) < 1 {
@@ -1425,14 +1424,23 @@ func init() {
 				return nil, errors.New("invalid prompt")
 			}
 
-			model := openai.GPT4oMini // default model
-			if len(args) == 2 {
+			// model and json are optional; an empty model lets the llm layer
+			// apply its default (or the LLM_MODEL env override)
+			var model string
+			if len(args) >= 2 {
 				if model, ok = args[1].(string); !ok {
 					return nil, errors.New("invalid model")
 				}
 			}
 
-			return llm.Query(prompt, model)
+			var asJSON bool
+			if len(args) >= 3 {
+				if asJSON, ok = args[2].(bool); !ok {
+					return nil, errors.New("invalid json flag")
+				}
+			}
+
+			return llm.QueryJSON(prompt, model, asJSON)
 		}))
 	MustAddFunction(NewWithPositionalArgs("unpack", 2, true, func(args ...interface{}) (interface{}, error) {
 		// format as string (ref: https://docs.python.org/3/library/struct.html#format-characters)
@@ -1520,15 +1528,17 @@ func init() {
 			return nil, err
 		}
 		// pick the first available proxy from common env vars (case-insensitive)
-		proxy := firstNonEmptyEnv("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy")
-		if proxy != "" {
-			socks5Dialer, err := connpool.NewCreateSOCKS5Dialer(proxy)
-			if err != nil {
-				return nil, err
+		proxy := jarmProxyFromEnvironment()
+		return coalesceJARM(proxy+"\x00"+host, func() (string, error) {
+			if proxy != "" {
+				socks5Dialer, err := connpool.NewCreateSOCKS5Dialer(proxy)
+				if err != nil {
+					return "", err
+				}
+				return jarm.HashWithDialer(socks5Dialer, hostname, port, 10)
 			}
-			return jarm.HashWithDialer(socks5Dialer, hostname, port, 10)
-		}
-		return jarm.HashWithDialer(nil, hostname, port, 10)
+			return jarm.HashWithDialer(nil, hostname, port, 10)
+		})
 	}))
 
 	MustAddFunction(NewWithSingleSignature("count",
@@ -1650,7 +1660,8 @@ func init() {
 				return nil, errors.New("not an RSA public key")
 			}
 
-			ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, rsaPub, []byte(plaintext))
+			// Templates expect PKCS #1 v1.5 ciphertext. Go 1.26 deprecates this primitive.
+			ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, rsaPub, []byte(plaintext)) //nolint:staticcheck // SA1019
 			if err != nil {
 				return nil, fmt.Errorf("RSA encryption failed: %w", err)
 			}
