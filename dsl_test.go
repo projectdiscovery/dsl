@@ -1217,3 +1217,35 @@ func TestEqualAnyFunction(t *testing.T) {
 		testDslExpressions(t, tests)
 	})
 }
+
+func TestCacheKeyIsInjective(t *testing.T) {
+	d := dslFunction{Name: "f"}
+	collisions := [][2][]interface{}{
+		{{"a", "b"}, {"a,b"}},
+		{{"a,", "b"}, {"a", ",b"}},
+		{{}, {""}},
+		{{true}, {uint8(1)}},
+		{{true}, {int8(1)}},
+		{{5}, {int64(5)}},
+		{{"ab"}, {[]byte("ab")}},
+	}
+	for _, c := range collisions {
+		k1, _ := d.cacheKey(c[0]...)
+		k2, _ := d.cacheKey(c[1]...)
+		require.NotEqual(t, k1, k2, "%#v vs %#v", c[0], c[1])
+	}
+
+	_, ok := d.cacheKey([]string{"a"})
+	require.False(t, ok, "types without an unambiguous encoding must bypass the cache")
+
+	resultCache.Purge()
+	eval := func(expr string) interface{} {
+		e, err := govaluate.NewEvaluableExpressionWithFunctions(expr, DefaultHelperFunctions)
+		require.NoError(t, err)
+		r, err := e.Evaluate(nil)
+		require.NoError(t, err)
+		return r
+	}
+	require.Equal(t, false, eval(`contains_all("a", "b")`))
+	require.Equal(t, true, eval(`contains_all("a,b")`))
+}

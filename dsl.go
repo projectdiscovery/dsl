@@ -79,7 +79,7 @@ var (
 
 	DefaultMaxDecompressionSize = int64(10 * 1024 * 1024) // 10MB
 	DefaultCacheSize            = 6144
-	resultCache                 = gcache.New[string, interface{}](DefaultCacheSize).Build()
+	resultCache                 = gcache.New[uint64, interface{}](DefaultCacheSize).Build()
 
 	// Initialize faker functions
 	faker = gofakeit.New(0)
