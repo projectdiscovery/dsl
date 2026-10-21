@@ -206,6 +206,7 @@ func TestDSLUnicodeEncodeDecode(t *testing.T) {
 			`\U0001F680`:               "🚀",
 			`\u767e\ud83d\u5ea6`:       `百\ud83d度`,
 			`\U00110000`:               `\U00110000`,
+			`\UFFFFFFFF`:               `\UFFFFFFFF`,
 			`\ua\u662f`:                `\ua是`,
 		}
 		for input, expected := range testCases {

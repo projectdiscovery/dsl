@@ -380,8 +380,9 @@ func strToNumEntities(s string) string {
 	return result.String()
 }
 
-// hexRune parses hex digits already validated by unicodeEscapeRegex.
+// hexRune parses hex digits already validated by unicodeEscapeRegex; values past
+// int32 saturate, which utf8.ValidRune then rejects.
 func hexRune(s string) rune {
-	v, _ := strconv.ParseUint(s, 16, 32)
+	v, _ := strconv.ParseInt(s, 16, 32)
 	return rune(v)
 }
