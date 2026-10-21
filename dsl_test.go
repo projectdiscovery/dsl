@@ -373,6 +373,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	to_bool(arg1 interface{}) interface{}
 	to_lower(arg1 interface{}) interface{}
 	to_number(arg1 interface{}) interface{}
+	to_slug(arg1 interface{}) interface{}
 	to_string(arg1 interface{}) interface{}
 	to_title(s, optionalLang string) string
 	to_unix_time(input string, optionalLayout string) int64
@@ -445,6 +446,8 @@ func TestDslExpressions(t *testing.T) {
 		`to_bool(0)`:                              false,
 		`to_bool("x")`:                            false,
 		`to_lower("HELLO")`:                       "hello",
+		`to_slug("Screenshot-https://www.nytimes.com/-2024-09-13")`: "Screenshot-https-www-nytimes-com-2024-09-13",
+		`to_slug("  héllo,  wörld!! ")`:                            "héllo-wörld",
 		`to_upper("hello")`:                       "HELLO",
 		`trim("aaaHelloddd", "ad")`:               "Hello",
 		`trim_left("aaaHelloddd", "ad")`:          "Helloddd",
@@ -1277,4 +1280,36 @@ func TestEqualAnyFunction(t *testing.T) {
 		}
 		testDslExpressions(t, tests)
 	})
+}
+
+func TestCacheKeyIsInjective(t *testing.T) {
+	d := dslFunction{Name: "f"}
+	collisions := [][2][]interface{}{
+		{{"a", "b"}, {"a,b"}},
+		{{"a,", "b"}, {"a", ",b"}},
+		{{}, {""}},
+		{{true}, {uint8(1)}},
+		{{true}, {int8(1)}},
+		{{5}, {int64(5)}},
+		{{"ab"}, {[]byte("ab")}},
+	}
+	for _, c := range collisions {
+		k1, _ := d.cacheKey(c[0]...)
+		k2, _ := d.cacheKey(c[1]...)
+		require.NotEqual(t, k1, k2, "%#v vs %#v", c[0], c[1])
+	}
+
+	_, ok := d.cacheKey([]string{"a"})
+	require.False(t, ok, "types without an unambiguous encoding must bypass the cache")
+
+	resultCache.Purge()
+	eval := func(expr string) interface{} {
+		e, err := govaluate.NewEvaluableExpressionWithFunctions(expr, DefaultHelperFunctions)
+		require.NoError(t, err)
+		r, err := e.Evaluate(nil)
+		require.NoError(t, err)
+		return r
+	}
+	require.Equal(t, false, eval(`contains_all("a", "b")`))
+	require.Equal(t, true, eval(`contains_all("a,b")`))
 }

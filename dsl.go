@@ -33,6 +33,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf16"
 	"unicode/utf8"
 
@@ -85,7 +86,7 @@ var (
 
 	DefaultMaxDecompressionSize = int64(10 * 1024 * 1024) // 10MB
 	DefaultCacheSize            = 6144
-	resultCache                 = gcache.New[string, interface{}](DefaultCacheSize).Build()
+	resultCache                 = gcache.New[uint64, interface{}](DefaultCacheSize).Build()
 
 	// Initialize faker functions
 	faker = gofakeit.New(0)
@@ -178,6 +179,12 @@ func init() {
 	}))
 	MustAddFunction(NewWithPositionalArgs("to_lower", 1, true, func(args ...interface{}) (interface{}, error) {
 		return strings.ToLower(toString(args[0])), nil
+	}))
+	MustAddFunction(NewWithPositionalArgs("to_slug", 1, true, func(args ...interface{}) (interface{}, error) {
+		words := strings.FieldsFunc(toString(args[0]), func(r rune) bool {
+			return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+		})
+		return strings.Join(words, "-"), nil
 	}))
 	MustAddFunction(NewWithMultipleSignatures("sort", []string{
 		"(input string) string",
