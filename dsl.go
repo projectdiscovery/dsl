@@ -33,6 +33,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/Mzack9999/gcache"
 	"github.com/asaskevich/govalidator"
@@ -172,6 +173,12 @@ func init() {
 	}))
 	MustAddFunction(NewWithPositionalArgs("to_lower", 1, true, func(args ...interface{}) (interface{}, error) {
 		return strings.ToLower(toString(args[0])), nil
+	}))
+	MustAddFunction(NewWithPositionalArgs("to_slug", 1, true, func(args ...interface{}) (interface{}, error) {
+		words := strings.FieldsFunc(toString(args[0]), func(r rune) bool {
+			return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+		})
+		return strings.Join(words, "-"), nil
 	}))
 	MustAddFunction(NewWithMultipleSignatures("sort", []string{
 		"(input string) string",
