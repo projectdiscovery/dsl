@@ -3,7 +3,7 @@ package dsl
 import (
 	"encoding/binary"
 	"fmt"
-	"hash/fnv"
+	"hash/maphash"
 	"math"
 	"strconv"
 	"strings"
@@ -57,95 +57,117 @@ func (d dslFunction) Exec(args ...interface{}) (interface{}, error) {
 		return d.ExpressionFunction(args...)
 	}
 
-	functionHash := d.hash(args...)
-	if result, err := resultCache.Get(functionHash); err == nil {
+	key, ok := d.cacheKey(args...)
+	if !ok {
+		return d.ExpressionFunction(args...)
+	}
+	if result, err := resultCache.Get(key); err == nil {
 		return result, nil
 	}
 
 	result, err := d.ExpressionFunction(args...)
 	if err == nil {
-		_ = resultCache.Set(functionHash, result)
+		_ = resultCache.Set(key, result)
 	}
 
 	return result, err
 }
 
-func (d dslFunction) hash(args ...interface{}) string {
-	hasher := fnv.New64a()
-	_, _ = hasher.Write([]byte(d.Name))
-	_, _ = hasher.Write([]byte{'-'})
+// cacheKey encodes the call injectively (a type tag per argument, a length
+// prefix per variable-size value) so distinct calls cannot share a key, as
+// "f(\"a\", \"b\")" and "f(\"a,b\")" did with a plain separator. ok is false for
+// argument types with no unambiguous encoding; those calls bypass the cache.
+func (d dslFunction) cacheKey(args ...interface{}) (key uint64, ok bool) {
+	var h maphash.Hash
+	h.SetSeed(cacheKeySeed)
+	writeString(&h, d.Name)
 
-	// NOTE(dwisiswant0): Using a single byte slice for binary conversions of
-	// numeric types avoids repeated mallocs within the loop, improving perf.
-	var b [8]byte
+	var b [9]byte
+	writeFixed := func(tag argTag, v uint64) {
+		b[0] = byte(tag)
+		binary.LittleEndian.PutUint64(b[1:], v)
+		_, _ = h.Write(b[:])
+	}
 
-	for i, arg := range args {
+	for _, arg := range args {
 		switch v := arg.(type) {
 		case string:
-			_, _ = hasher.Write([]byte(v))
+			_ = h.WriteByte(byte(tagString))
+			writeString(&h, v)
 		case []byte:
-			_, _ = hasher.Write(v)
-		// Booleans
+			_ = h.WriteByte(byte(tagBytes))
+			writeBytes(&h, v)
 		case bool:
+			var u uint64
 			if v {
-				_, _ = hasher.Write([]byte{1})
-			} else {
-				_, _ = hasher.Write([]byte{0})
+				u = 1
 			}
-
-		// Integers
-		// NOTE(dwisiswant0): TIL! By writing the raw binary representation of
-		// numeric types directly to the hasher, we avoid the significant perf
-		// and memory overhead of converting em to strings (ex. via `fmt.Sprintf`
-		// or `strconv`). This is MUCH faster & reduces GC pressure.
-		// We use `binary.LittleEndian` to ensure the byte order is consistent
-		// across all machine archs, which is critical for generating
-		// deterministic hashes.
-		// Proof: `go test -benchmem -run=^$ -bench ^BenchmarkDSLFunctionHash$ .`
+			writeFixed(tagBool, u)
 		case int:
-			binary.LittleEndian.PutUint64(b[:], uint64(v))
-			_, _ = hasher.Write(b[:])
+			writeFixed(tagInt, uint64(v))
 		case int8:
-			_, _ = hasher.Write([]byte{byte(v)})
+			writeFixed(tagInt8, uint64(v))
 		case int16:
-			binary.LittleEndian.PutUint16(b[:2], uint16(v))
-			_, _ = hasher.Write(b[:2])
+			writeFixed(tagInt16, uint64(v))
 		case int32:
-			binary.LittleEndian.PutUint32(b[:4], uint32(v))
-			_, _ = hasher.Write(b[:4])
+			writeFixed(tagInt32, uint64(v))
 		case int64:
-			binary.LittleEndian.PutUint64(b[:], uint64(v))
-			_, _ = hasher.Write(b[:])
-		// Unsigned Integers
+			writeFixed(tagInt64, uint64(v))
 		case uint:
-			binary.LittleEndian.PutUint64(b[:], uint64(v))
-			_, _ = hasher.Write(b[:])
-		case uint8: // same as byte
-			_, _ = hasher.Write([]byte{v})
+			writeFixed(tagUint, uint64(v))
+		case uint8:
+			writeFixed(tagUint8, uint64(v))
 		case uint16:
-			binary.LittleEndian.PutUint16(b[:2], v)
-			_, _ = hasher.Write(b[:2])
-		case uint32: // same as rune
-			binary.LittleEndian.PutUint32(b[:4], v)
-			_, _ = hasher.Write(b[:4])
+			writeFixed(tagUint16, uint64(v))
+		case uint32:
+			writeFixed(tagUint32, uint64(v))
 		case uint64:
-			binary.LittleEndian.PutUint64(b[:], v)
-			_, _ = hasher.Write(b[:])
-		// Floats
+			writeFixed(tagUint64, v)
 		case float32:
-			binary.LittleEndian.PutUint32(b[:4], math.Float32bits(v))
-			_, _ = hasher.Write(b[:4])
+			writeFixed(tagFloat32, uint64(math.Float32bits(v)))
 		case float64:
-			binary.LittleEndian.PutUint64(b[:], math.Float64bits(v))
-			_, _ = hasher.Write(b[:])
+			writeFixed(tagFloat64, math.Float64bits(v))
 		default:
-			_, _ = fmt.Fprintf(hasher, "%v", v)
-		}
-
-		if i < len(args)-1 {
-			_, _ = hasher.Write([]byte{','})
+			return 0, false
 		}
 	}
 
-	return strconv.FormatUint(hasher.Sum64(), 10)
+	return h.Sum64(), true
+}
+
+type argTag byte
+
+const (
+	tagString argTag = iota + 1
+	tagBytes
+	tagBool
+	tagInt
+	tagInt8
+	tagInt16
+	tagInt32
+	tagInt64
+	tagUint
+	tagUint8
+	tagUint16
+	tagUint32
+	tagUint64
+	tagFloat32
+	tagFloat64
+)
+
+// cacheKeySeed is fixed per process because keys only live in the in-memory cache.
+var cacheKeySeed = maphash.MakeSeed()
+
+func writeString(h *maphash.Hash, s string) {
+	var n [8]byte
+	binary.LittleEndian.PutUint64(n[:], uint64(len(s)))
+	_, _ = h.Write(n[:])
+	_, _ = h.WriteString(s)
+}
+
+func writeBytes(h *maphash.Hash, p []byte) {
+	var n [8]byte
+	binary.LittleEndian.PutUint64(n[:], uint64(len(p)))
+	_, _ = h.Write(n[:])
+	_, _ = h.Write(p)
 }
