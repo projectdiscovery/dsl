@@ -32,6 +32,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unicode"
 	"unicode/utf16"
@@ -87,6 +88,11 @@ var (
 	DefaultMaxDecompressionSize = int64(10 * 1024 * 1024) // 10MB
 	DefaultCacheSize            = 6144
 	resultCache                 = gcache.New[uint64, interface{}](DefaultCacheSize).Build()
+	// compiledRegexCache reuses compiled patterns across calls; compilation is
+	// expensive and *regexp.Regexp is safe for concurrent use. It sits behind an
+	// atomic pointer so SetRegexCacheSize can replace it while helpers run; nil
+	// disables caching.
+	compiledRegexCache atomic.Pointer[gcache.Cache[string, *regexp.Regexp]]
 
 	// Initialize faker functions
 	faker = gofakeit.New(0)
@@ -132,6 +138,60 @@ func MustAddFunction(function dslFunction) {
 	if err := AddFunction(function); err != nil {
 		panic(err)
 	}
+}
+
+// compileRegex returns the compiled form of pattern, reusing an earlier
+// compilation where there is one.
+//
+// The DSL regex helpers are commonly called many times with the same pattern
+// but different subjects, so patterns repeat while subjects do not. Compiling
+// on every call is costly; *regexp.Regexp is safe for concurrent use, so one
+// compilation can be shared by every caller.
+func compileRegex(pattern string) (*regexp.Regexp, error) {
+	cache := compiledRegexCache.Load()
+	if cache == nil || len(pattern) > maxCachedRegexLen {
+		return regexp.Compile(pattern)
+	}
+
+	if compiled, err := (*cache).GetIFPresent(pattern); err == nil {
+		return compiled, nil
+	}
+
+	compiled, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+	_ = (*cache).Set(pattern, compiled)
+
+	return compiled, nil
+}
+
+// maxCachedRegexLen bounds cache memory, since a compiled program grows with its
+// pattern: ~3.5 KB at 40 bytes, ~14 KB at 256, ~70 KB at 1 KB. Longer patterns
+// are compiled per call.
+const maxCachedRegexLen = 256
+
+// SetRegexCacheSize replaces the compiled-regex cache with an empty one holding
+// up to size patterns, evicting least recently used first. A size of zero or
+// less disables caching.
+//
+// The default of DefaultCacheSize suits callers with a modest set of patterns.
+// A caller that evaluates more distinct patterns per pass than the cache holds
+// gets no hits at all, since each pattern is evicted before it comes round
+// again; such a caller should size the cache to its pattern set. Memory is
+// roughly 2.5–14 KB per cached pattern, depending on its length.
+func SetRegexCacheSize(size int) {
+	if size <= 0 {
+		compiledRegexCache.Store(nil)
+		return
+	}
+
+	cache := gcache.New[string, *regexp.Regexp](size).LRU().Build()
+	compiledRegexCache.Store(&cache)
+}
+
+func init() {
+	SetRegexCacheSize(DefaultCacheSize)
 }
 
 func init() {
@@ -292,7 +352,7 @@ func init() {
 		return strings.ReplaceAll(toString(args[0]), toString(args[1]), toString(args[2])), nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("replace_regex", 3, true, func(args ...interface{}) (interface{}, error) {
-		compiled, err := regexp.Compile(toString(args[1]))
+		compiled, err := compileRegex(toString(args[1]))
 		if err != nil {
 			return nil, err
 		}
@@ -815,7 +875,7 @@ func init() {
 			}
 		}))
 	MustAddFunction(NewWithPositionalArgs("regex", 2, true, func(args ...interface{}) (interface{}, error) {
-		compiled, err := regexp.Compile(toString(args[0]))
+		compiled, err := compileRegex(toString(args[0]))
 		if err != nil {
 			return nil, err
 		}
@@ -829,7 +889,7 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 
-			compiled, err := regexp.Compile(toString(args[0]))
+			compiled, err := compileRegex(toString(args[0]))
 			if err != nil {
 				return nil, err
 			}
@@ -851,7 +911,7 @@ func init() {
 			}
 
 			pattern := toString(args[0])
-			compiled, err := regexp.Compile(pattern)
+			compiled, err := compileRegex(pattern)
 			if err != nil {
 				return nil, err
 			}
