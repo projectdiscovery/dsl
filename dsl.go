@@ -34,6 +34,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf16"
+	"unicode/utf8"
 
 	"github.com/Mzack9999/gcache"
 	"github.com/asaskevich/govalidator"
@@ -71,6 +73,10 @@ var (
 	DefaultHelperFunctions map[string]govaluate.ExpressionFunction
 
 	funcSignatureRegex = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
+
+	// unicodeEscapeRegex matches a single escape, trying a UTF-16 surrogate pair
+	// first so JSON-style astral runes ("\ud83d\ude80") decode as one rune
+	unicodeEscapeRegex = regexp.MustCompile(`\\u[dD][89abAB][0-9a-fA-F]{2}\\u[dD][c-fC-F][0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8}`)
 
 	// ErrParsingArg is error when parsing value of argument
 	// Use With Caution: Nuclei ignores this error in extractors(ref: https://github.com/projectdiscovery/nuclei/issues/3950)
@@ -570,6 +576,30 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("hex_decode", 1, true, func(args ...interface{}) (interface{}, error) {
 		decodeString, err := hex.DecodeString(toString(args[0]))
 		return string(decodeString), err
+	}))
+	MustAddFunction(NewWithPositionalArgs("unicode_encode", 1, true, func(args ...interface{}) (interface{}, error) {
+		// UTF-16 code units, as JSON and JavaScript escape runes outside the BMP
+		var result strings.Builder
+		for _, u := range utf16.Encode([]rune(toString(args[0]))) {
+			fmt.Fprintf(&result, `\u%04x`, u)
+		}
+		return result.String(), nil
+	}))
+	MustAddFunction(NewWithPositionalArgs("unicode_decode", 1, true, func(args ...interface{}) (interface{}, error) {
+		// lone surrogates and out-of-range code points are left as written
+		result := unicodeEscapeRegex.ReplaceAllStringFunc(toString(args[0]), func(match string) string {
+			r := hexRune(match[2:6])
+			if len(match) == 12 {
+				r = utf16.DecodeRune(r, hexRune(match[8:]))
+			} else if match[1] == 'U' {
+				r = hexRune(match[2:])
+			}
+			if !utf8.ValidRune(r) {
+				return match
+			}
+			return string(r)
+		})
+		return result, nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("hmac", 3, true, func(args ...interface{}) (interface{}, error) {
 		hashAlgorithm := args[0]
