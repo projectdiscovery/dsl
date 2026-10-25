@@ -149,13 +149,13 @@ func BenchmarkDSLFunctionHash(b *testing.B) {
 		}
 	})
 
-	b.Run("fnv", func(b *testing.B) {
+	b.Run("maphash", func(b *testing.B) {
 		d := dslFunction{Name: name}
 
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_ = d.hash(args...)
+			_, _ = d.cacheKey(args...)
 		}
 	})
 }

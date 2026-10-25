@@ -33,6 +33,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/Mzack9999/gcache"
 	"github.com/asaskevich/govalidator"
@@ -79,7 +80,7 @@ var (
 
 	DefaultMaxDecompressionSize = int64(10 * 1024 * 1024) // 10MB
 	DefaultCacheSize            = 6144
-	resultCache                 = gcache.New[string, interface{}](DefaultCacheSize).Build()
+	resultCache                 = gcache.New[uint64, interface{}](DefaultCacheSize).Build()
 
 	// Initialize faker functions
 	faker = gofakeit.New(0)
@@ -172,6 +173,12 @@ func init() {
 	}))
 	MustAddFunction(NewWithPositionalArgs("to_lower", 1, true, func(args ...interface{}) (interface{}, error) {
 		return strings.ToLower(toString(args[0])), nil
+	}))
+	MustAddFunction(NewWithPositionalArgs("to_slug", 1, true, func(args ...interface{}) (interface{}, error) {
+		words := strings.FieldsFunc(toString(args[0]), func(r rune) bool {
+			return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+		})
+		return strings.Join(words, "-"), nil
 	}))
 	MustAddFunction(NewWithMultipleSignatures("sort", []string{
 		"(input string) string",
@@ -542,7 +549,12 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 
-			data := args[0]
+			// hexutil.Encode takes any but only reads a string or a []byte,
+			// and returns "" for anything else. govaluate hands a numeric
+			// literal over as a float64, so hex_encode(1234) used to come back
+			// empty, while base64 and md5 encode the digits like every other
+			// helper here does.
+			data := toString(args[0])
 			if len(args) == 1 {
 				// Default behavior: standard hex format
 				return hexutil.Encode(data), nil
@@ -1647,7 +1659,8 @@ func init() {
 				return nil, errors.New("not an RSA public key")
 			}
 
-			ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, rsaPub, []byte(plaintext))
+			// Templates expect PKCS #1 v1.5 ciphertext. Go 1.26 deprecates this primitive.
+			ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, rsaPub, []byte(plaintext)) //nolint:staticcheck // SA1019
 			if err != nil {
 				return nil, fmt.Errorf("RSA encryption failed: %w", err)
 			}
