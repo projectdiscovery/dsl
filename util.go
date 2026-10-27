@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/kataras/jwt"
 	"github.com/pkg/errors"
@@ -372,10 +373,25 @@ func strToNumEntities(s string) string {
 			}
 		}
 
-		r := rune(escaped[i])
+		// A numeric reference names a code point, so decode one rune rather
+		// than one byte. Converting a byte on its own split every multi-byte
+		// character into a run of references that a browser reads back as
+		// mojibake. A byte that is not valid UTF-8 has no code point to name,
+		// so it keeps the value it had before.
+		r, size := utf8.DecodeRuneInString(escaped[i:])
+		if r == utf8.RuneError && size == 1 {
+			r = rune(escaped[i])
+		}
 		fmt.Fprintf(&result, "&#%d;", int(r))
-		i++
+		i += size
 	}
 
 	return result.String()
+}
+
+// hexRune parses hex digits already validated by unicodeEscapeRegex; values past
+// int32 saturate, which utf8.ValidRune then rejects.
+func hexRune(s string) rune {
+	v, _ := strconv.ParseInt(s, 16, 32)
+	return rune(v)
 }

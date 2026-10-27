@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"regexp"
+	"sort"
 	"testing"
 	"time"
 
@@ -191,6 +192,164 @@ func TestDSLURLEncodeDecode(t *testing.T) {
 			})
 		}
 	})
+
+	// Templates hand url_encode the output of gzip, aes_cbc and hex_decode,
+	// none of which is valid UTF-8. Those bytes have to survive the round trip.
+	t.Run("Bytes that are not valid UTF-8", func(t *testing.T) {
+		testCases := []struct {
+			name     string
+			input    string
+			expected string
+		}{
+			{
+				name:     "lone continuation byte",
+				input:    "\x80",
+				expected: "%80",
+			},
+			{
+				name:     "bytes no encoder produces",
+				input:    "\xfe\xff",
+				expected: "%FE%FF",
+			},
+			{
+				name:     "truncated multi-byte sequence",
+				input:    "\xe3\x81",
+				expected: "%E3%81",
+			},
+			{
+				name:     "binary mixed with ascii",
+				input:    "id=\x00\x8f\x9a",
+				expected: "id%3D%00%8F%9A",
+			},
+			{
+				name:     "gzip header",
+				input:    "\x1f\x8b\x08\x00",
+				expected: "%1F%8B%08%00",
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				for _, encodeAll := range []bool{false, true} {
+					encoded, err := DefaultHelperFunctions["url_encode"](tc.input, encodeAll)
+					require.NoError(t, err, "url_encode should not error")
+					require.Equal(t, tc.expected, encoded, "url_encode should encode the bytes it was given")
+
+					decoded, err := DefaultHelperFunctions["url_decode"](encoded)
+					require.NoError(t, err, "url_decode should not error")
+					require.Equal(t, tc.input, decoded, "url_decode should reverse url_encode byte for byte")
+				}
+			})
+		}
+	})
+}
+
+func TestDSLHTMLEscapeNumericEntities(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "ascii is one reference per character",
+			input:    "ab",
+			expected: "&#97;&#98;",
+		},
+		{
+			name:     "cjk",
+			input:    "こ",
+			expected: "&#12371;",
+		},
+		{
+			name:     "outside the basic multilingual plane",
+			input:    "🚀",
+			expected: "&#128640;",
+		},
+		{
+			name:     "multi-byte characters stay separate",
+			input:    "こん",
+			expected: "&#12371;&#12435;",
+		},
+		{
+			// The escaping pass already has a named entity for this one, so it
+			// reaches the loop as an entity and is copied across untouched.
+			name:     "named entity from the escaping pass is left alone",
+			input:    "<é>",
+			expected: "&lt;&eacute;&gt;",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			escaped, err := DefaultHelperFunctions["html_escape"](tc.input, true)
+			require.NoError(t, err, "html_escape should not error")
+			require.Equal(t, tc.expected, escaped, "html_escape should name the code point")
+
+			unescaped, err := DefaultHelperFunctions["html_unescape"](escaped)
+			require.NoError(t, err, "html_unescape should not error")
+			require.Equal(t, tc.input, unescaped, "html_unescape should reverse html_escape")
+		})
+	}
+}
+
+func TestDSLUnicodeEncodeDecode(t *testing.T) {
+	t.Run("round trip", func(t *testing.T) {
+		testCases := []struct {
+			name  string
+			input string
+		}{
+			{"ascii", "ok"},
+			{"chinese", "百度一下"},
+			{"mixed", "hello 世界 123"},
+			{"emoji astral plane", "🚀✨"},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				encoded, err := DefaultHelperFunctions["unicode_encode"](tc.input)
+				require.NoError(t, err, "unicode_encode should not error")
+
+				decoded, err := DefaultHelperFunctions["unicode_decode"](encoded)
+				require.NoError(t, err, "unicode_decode should not error")
+				require.Equal(t, tc.input, decoded, "unicode_decode should reverse unicode_encode")
+			})
+		}
+	})
+
+	t.Run("encode output", func(t *testing.T) {
+		encoded, err := DefaultHelperFunctions["unicode_encode"]("ok🚀")
+		require.NoError(t, err)
+		require.Equal(t, `\u006f\u006b\ud83d\ude80`, encoded)
+	})
+
+	t.Run("decode", func(t *testing.T) {
+		testCases := map[string]string{
+			`\ud83d\ude80`:             "🚀",
+			`\u767e\uD83D\uDE80\u4e00`: "百🚀一",
+			`\U0001F680`:               "🚀",
+			`\u767e\ud83d\u5ea6`:       `百\ud83d度`,
+			`\U00110000`:               `\U00110000`,
+			`\UFFFFFFFF`:               `\UFFFFFFFF`,
+			`\ua\u662f`:                `\ua是`,
+		}
+		for input, expected := range testCases {
+			decoded, err := DefaultHelperFunctions["unicode_decode"](input)
+			require.NoError(t, err)
+			require.Equal(t, expected, decoded, input)
+		}
+	})
+
+	t.Run("decode mixed text and escapes", func(t *testing.T) {
+		decoded, err := DefaultHelperFunctions["unicode_decode"](`hello \u4e16\u754c`)
+		require.NoError(t, err)
+		require.Equal(t, "hello 世界", decoded)
+	})
+
+	t.Run("decode without escapes is unchanged", func(t *testing.T) {
+		decoded, err := DefaultHelperFunctions["unicode_decode"]("plain text")
+		require.NoError(t, err)
+		require.Equal(t, "plain text", decoded)
+	})
 }
 
 func TestDSLTimeComparison(t *testing.T) {
@@ -216,6 +375,93 @@ func TestDSLGzipSerialize(t *testing.T) {
 	require.Nil(t, err, "could not evaluate decoded data")
 
 	require.Equal(t, "hello world", data.(string), "could not get gzip encoded data")
+}
+
+// Every other encoding helper stringifies whatever it is handed, and a
+// template reaches all of them through govaluate, which turns a numeric
+// literal into a float64.
+func TestHexEncodeAcceptsNumbers(t *testing.T) {
+	for _, tc := range []struct {
+		expression string
+		expected   string
+	}{
+		{expression: `hex_encode("1234")`, expected: "31323334"},
+		{expression: `hex_encode(1234)`, expected: "31323334"},
+		{expression: `hex_encode(1234, "x")`, expected: `\x31\x32\x33\x34`},
+		{expression: `hex_decode(hex_encode(1234))`, expected: "1234"},
+		// The convention this follows.
+		{expression: `base64(1234)`, expected: "MTIzNA=="},
+	} {
+		t.Run(tc.expression, func(t *testing.T) {
+			require.Equal(t, tc.expected, evaluateExpression(t, tc.expression))
+		})
+	}
+}
+
+// govaluate hands every numeric literal over as a float64, so a template can
+// reach any helper with one. Returning an error is fine, panicking is not: the
+// panic leaves the helper, crosses govaluate and takes the scan down with it.
+func TestHelpersDoNotPanicOnNumericArgument(t *testing.T) {
+	// These reach the network or block, so they are exercised elsewhere.
+	skip := map[string]bool{
+		"public_ip": true, "publicip": true,
+		"llm_prompt": true, "llmprompt": true,
+		"wait_for": true, "waitfor": true,
+		"jarm": true,
+	}
+
+	names := make([]string, 0, len(DefaultHelperFunctions))
+	for name := range DefaultHelperFunctions {
+		if !skip[name] {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			for arity := 1; arity <= 4; arity++ {
+				args := make([]interface{}, arity)
+				for i := range args {
+					args[i] = float64(1234)
+				}
+				require.NotPanicsf(t, func() {
+					_, _ = DefaultHelperFunctions[name](args...)
+				}, "%s panicked on %d numeric argument(s)", name, arity)
+			}
+		})
+	}
+}
+
+// aes_cbc dropped the error from aes.NewCipher, so a key of the wrong length
+// left a nil block for NewCBCEncrypter to dereference. NewCBCEncrypter panics
+// on a mismatched IV too. Neither needs an odd argument type to reach.
+func TestAesCbcRejectsBadKeyAndIV(t *testing.T) {
+	const plaintext = "secret"
+	const validKey = "0123456789abcdef"
+	const validIV = "0123456789abcdef"
+
+	t.Run("valid key and iv", func(t *testing.T) {
+		out, err := DefaultHelperFunctions["aes_cbc"](plaintext, validKey, validIV)
+		require.NoError(t, err)
+		require.Equal(t, "308eed5be66233adf4b3b7a780169a4e", fmt.Sprintf("%x", out))
+	})
+
+	for _, tc := range []struct {
+		name, key, iv string
+	}{
+		{name: "short key", key: "shortkey", iv: validIV},
+		{name: "empty key", key: "", iv: validIV},
+		{name: "short iv", key: validKey, iv: "shortiv"},
+		{name: "empty iv", key: validKey, iv: ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NotPanics(t, func() {
+				_, err := DefaultHelperFunctions["aes_cbc"](plaintext, tc.key, tc.iv)
+				require.Error(t, err, "a bad key or iv should be reported, not panicked on")
+			})
+		})
+	}
 }
 
 func TestDslFunctionSignatures(t *testing.T) {
@@ -338,6 +584,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	to_bool(arg1 interface{}) interface{}
 	to_lower(arg1 interface{}) interface{}
 	to_number(arg1 interface{}) interface{}
+	to_slug(arg1 interface{}) interface{}
 	to_string(arg1 interface{}) interface{}
 	to_title(s, optionalLang string) string
 	to_unix_time(input string, optionalLayout string) int64
@@ -348,6 +595,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	trim_right(arg1, arg2 interface{}) interface{}
 	trim_space(arg1 interface{}) interface{}
 	trim_suffix(arg1, arg2 interface{}) interface{}
+	unicode_decode(arg1 interface{}) interface{}
+	unicode_encode(arg1 interface{}) interface{}
 	uniq(elements ...interface{}) []interface{}
 	uniq(input number) string
 	uniq(input string) string
@@ -408,22 +657,24 @@ func TestDslExpressions(t *testing.T) {
 		`to_bool(0)`:                              false,
 		`to_bool("x")`:                            false,
 		`to_lower("HELLO")`:                       "hello",
-		`to_upper("hello")`:                       "HELLO",
-		`trim("aaaHelloddd", "ad")`:               "Hello",
-		`trim_left("aaaHelloddd", "ad")`:          "Helloddd",
-		`trim_prefix("aaHelloaa", "aa")`:          "Helloaa",
-		`trim_right("aaaHelloddd", "ad")`:         "aaaHello",
-		`trim_space("  Hello  ")`:                 "Hello",
-		`trim_suffix("aaHelloaa", "aa")`:          "aaHello",
-		`url_decode("https:%2F%2Fprojectdiscovery.io%3Ftest=1")`: "https://projectdiscovery.io?test=1",
-		`url_encode("https://projectdiscovery.io/test?a=1")`:     "https%3A%2F%2Fprojectdiscovery.io%2Ftest%3Fa%3D1",
-		`gzip("Hello")`:         "\x1f\x8b\b\x00\x00\x00\x00\x00\x00\xff\xf2H\xcd\xc9\xc9\a\x04\x00\x00\xff\xff\x82\x89\xd1\xf7\x05\x00\x00\x00",
-		`zip("aaa.txt","abcd")`: ([]byte("PK\x03\x04\x14\x00\x08\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00aaa.txtJLJN\x01\x04\x00\x00\xff\xffPK\x07\x08\x11\xcd\x82\xed\n\x00\x00\x00\x04\x00\x00\x00PK\x01\x02\x14\x00\x14\x00\x08\x00\x08\x00\x00\x00\x00\x00\x11\xcd\x82\xed\n\x00\x00\x00\x04\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00aaa.txtPK\x05\x06\x00\x00\x00\x00\x01\x00\x01\x005\x00\x00\x00?\x00\x00\x00\x00\x00")),
-		`zlib("Hello")`:         "\x78\x9c\xf2\x48\xcd\xc9\xc9\x07\x04\x00\x00\xff\xff\x05\x8c\x01\xf5",
+		`to_slug("Screenshot-https://www.nytimes.com/-2024-09-13")`:     "Screenshot-https-www-nytimes-com-2024-09-13",
+		`to_slug("  héllo,  wörld!! ")`:                                 "héllo-wörld",
+		`to_upper("hello")`:                                             "HELLO",
+		`trim("aaaHelloddd", "ad")`:                                     "Hello",
+		`trim_left("aaaHelloddd", "ad")`:                                "Helloddd",
+		`trim_prefix("aaHelloaa", "aa")`:                                "Helloaa",
+		`trim_right("aaaHelloddd", "ad")`:                               "aaaHello",
+		`trim_space("  Hello  ")`:                                       "Hello",
+		`trim_suffix("aaHelloaa", "aa")`:                                "aaHello",
+		`url_decode("https:%2F%2Fprojectdiscovery.io%3Ftest=1")`:        "https://projectdiscovery.io?test=1",
+		`url_encode("https://projectdiscovery.io/test?a=1")`:            "https%3A%2F%2Fprojectdiscovery.io%2Ftest%3Fa%3D1",
+		`gzip("Hello")`:                                                 "\x1f\x8b\b\x00\x00\x00\x00\x00\x00\xff\xf2H\xcd\xc9\xc9\a\x04\x00\x00\xff\xff\x82\x89\xd1\xf7\x05\x00\x00\x00",
+		`zip("aaa.txt","abcd")`:                                         ([]byte("PK\x03\x04\x14\x00\x08\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00aaa.txtJLJN\x01\x04\x00\x00\xff\xffPK\x07\x08\x11\xcd\x82\xed\n\x00\x00\x00\x04\x00\x00\x00PK\x01\x02\x14\x00\x14\x00\x08\x00\x08\x00\x00\x00\x00\x00\x11\xcd\x82\xed\n\x00\x00\x00\x04\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00aaa.txtPK\x05\x06\x00\x00\x00\x00\x01\x00\x01\x005\x00\x00\x00?\x00\x00\x00\x00\x00")),
+		`zlib("Hello")`:                                                 "\x78\x9c\xf2\x48\xcd\xc9\xc9\x07\x04\x00\x00\xff\xff\x05\x8c\x01\xf5",
 		`zlib_decode(hex_decode("789cf248cdc9c907040000ffff058c01f5"))`: "Hello",
-		`deflate("Hello")`:                              "\xf2\x48\xcd\xc9\xc9\x07\x04\x00\x00\xff\xff",
-		`inflate(hex_decode("f348cdc9c90700"))`:         "Hello",
-		`inflate(hex_decode("f248cdc9c907040000ffff"))`: "Hello",
+		`deflate("Hello")`:                                              "\xf2\x48\xcd\xc9\xc9\x07\x04\x00\x00\xff\xff",
+		`inflate(hex_decode("f348cdc9c90700"))`:                         "Hello",
+		`inflate(hex_decode("f248cdc9c907040000ffff"))`:                 "Hello",
 		`gzip_decode(hex_decode("1f8b08000000000000fff248cdc9c907040000ffff8289d1f705000000"))`:                           "Hello",
 		`generate_dotnet_gadget("type-confuse-delegate", "cmd.exe /C nslookup http://scanme.sh", "binary", "base64-raw")`: "AAEAAAD/////AQAAAAAAAAAMAgAAAElTeXN0ZW0sIFZlcnNpb249NC4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1iNzdhNWM1NjE5MzRlMDg5BQEAAACEAVN5c3RlbS5Db2xsZWN0aW9ucy5HZW5lcmljLlNvcnRlZFNldGAxW1tTeXN0ZW0uU3RyaW5nLCBtc2NvcmxpYiwgVmVyc2lvbj00LjAuMC4wLCBDdWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWI3N2E1YzU2MTkzNGUwODldXQQAAAAFQ291bnQIQ29tcGFyZXIHVmVyc2lvbgVJdGVtcwADAAYIjQFTeXN0ZW0uQ29sbGVjdGlvbnMuR2VuZXJpYy5Db21wYXJpc29uQ29tcGFyZXJgMVtbU3lzdGVtLlN0cmluZywgbXNjb3JsaWIsIFZlcnNpb249NC4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1iNzdhNWM1NjE5MzRlMDg5XV0IAgAAAAIAAAAJAwAAAAIAAAAJBAAAAAQDAAAAjQFTeXN0ZW0uQ29sbGVjdGlvbnMuR2VuZXJpYy5Db21wYXJpc29uQ29tcGFyZXJgMVtbU3lzdGVtLlN0cmluZywgbXNjb3JsaWIsIFZlcnNpb249NC4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1iNzdhNWM1NjE5MzRlMDg5XV0BAAAAC19jb21wYXJpc29uAyJTeXN0ZW0uRGVsZWdhdGVTZXJpYWxpemF0aW9uSG9sZGVyCQUAAAARBAAAAAIAAAAGBgAAACcvYyBjbWQuZXhlIC9DIG5zbG9va3VwIGh0dHA6Ly9zY2FubWUuc2gGBwAAAANjbWQEBQAAACJTeXN0ZW0uRGVsZWdhdGVTZXJpYWxpemF0aW9uSG9sZGVyAwAAAAhEZWxlZ2F0ZQdtZXRob2QwB21ldGhvZDEDAwMwU3lzdGVtLkRlbGVnYXRlU2VyaWFsaXphdGlvbkhvbGRlcitEZWxlZ2F0ZUVudHJ5L1N5c3RlbS5SZWZsZWN0aW9uLk1lbWJlckluZm9TZXJpYWxpemF0aW9uSG9sZGVyL1N5c3RlbS5SZWZsZWN0aW9uLk1lbWJlckluZm9TZXJpYWxpemF0aW9uSG9sZGVyCQgAAAAJCQAAAAkKAAAABAgAAAAwU3lzdGVtLkRlbGVnYXRlU2VyaWFsaXphdGlvbkhvbGRlcitEZWxlZ2F0ZUVudHJ5BwAAAAR0eXBlCGFzc2VtYmx5BnRhcmdldBJ0YXJnZXRUeXBlQXNzZW1ibHkOdGFyZ2V0VHlwZU5hbWUKbWV0aG9kTmFtZQ1kZWxlZ2F0ZUVudHJ5AQECAQEBAzBTeXN0ZW0uRGVsZWdhdGVTZXJpYWxpemF0aW9uSG9sZGVyK0RlbGVnYXRlRW50cnkGCwAAALACU3lzdGVtLkZ1bmNgM1tbU3lzdGVtLlN0cmluZywgbXNjb3JsaWIsIFZlcnNpb249NC4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1iNzdhNWM1NjE5MzRlMDg5XSxbU3lzdGVtLlN0cmluZywgbXNjb3JsaWIsIFZlcnNpb249NC4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1iNzdhNWM1NjE5MzRlMDg5XSxbU3lzdGVtLkRpYWdub3N0aWNzLlByb2Nlc3MsIFN5c3RlbSwgVmVyc2lvbj00LjAuMC4wLCBDdWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWI3N2E1YzU2MTkzNGUwODldXQYMAAAAS21zY29ybGliLCBWZXJzaW9uPTQuMC4wLjAsIEN1bHR1cmU9bmV1dHJhbCwgUHVibGljS2V5VG9rZW49Yjc3YTVjNTYxOTM0ZTA4OQoGDQAAAElTeXN0ZW0sIFZlcnNpb249NC4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1iNzdhNWM1NjE5MzRlMDg5Bg4AAAAaU3lzdGVtLkRpYWdub3N0aWNzLlByb2Nlc3MGDwAAAAVTdGFydAkQAAAABAkAAAAvU3lzdGVtLlJlZmxlY3Rpb24uTWVtYmVySW5mb1NlcmlhbGl6YXRpb25Ib2xkZXIHAAAABE5hbWUMQXNzZW1ibHlOYW1lCUNsYXNzTmFtZQlTaWduYXR1cmUKU2lnbmF0dXJlMgpNZW1iZXJUeXBlEEdlbmVyaWNBcmd1bWVudHMBAQEBAQADCA1TeXN0ZW0uVHlwZVtdCQ8AAAAJDQAAAAkOAAAABhQAAAA+U3lzdGVtLkRpYWdub3N0aWNzLlByb2Nlc3MgU3RhcnQoU3lzdGVtLlN0cmluZywgU3lzdGVtLlN0cmluZykGFQAAAD5TeXN0ZW0uRGlhZ25vc3RpY3MuUHJvY2VzcyBTdGFydChTeXN0ZW0uU3RyaW5nLCBTeXN0ZW0uU3RyaW5nKQgAAAAKAQoAAAAJAAAABhYAAAAHQ29tcGFyZQkMAAAABhgAAAANU3lzdGVtLlN0cmluZwYZAAAAK0ludDMyIENvbXBhcmUoU3lzdGVtLlN0cmluZywgU3lzdGVtLlN0cmluZykGGgAAADJTeXN0ZW0uSW50MzIgQ29tcGFyZShTeXN0ZW0uU3RyaW5nLCBTeXN0ZW0uU3RyaW5nKQgAAAAKARAAAAAIAAAABhsAAABxU3lzdGVtLkNvbXBhcmlzb25gMVtbU3lzdGVtLlN0cmluZywgbXNjb3JsaWIsIFZlcnNpb249NC4wLjAuMCwgQ3VsdHVyZT1uZXV0cmFsLCBQdWJsaWNLZXlUb2tlbj1iNzdhNWM1NjE5MzRlMDg5XV0JDAAAAAoJDAAAAAkYAAAACRYAAAAKCw==",
 		`generate_java_gadget("commons-collections3.1", "wget http://scanme.sh", "base64")`:                               "rO0ABXNyABFqYXZhLnV0aWwuSGFzaFNldLpEhZWWuLc0AwAAeHB3DAAAAAI/QAAAAAAAAXNyADRvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMua2V5dmFsdWUuVGllZE1hcEVudHJ5iq3SmznBH9sCAAJMAANrZXl0ABJMamF2YS9sYW5nL09iamVjdDtMAANtYXB0AA9MamF2YS91dGlsL01hcDt4cHQAJmh0dHBzOi8vZ2l0aHViLmNvbS9qb2FvbWF0b3NmL2pleGJvc3Mgc3IAKm9yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5tYXAuTGF6eU1hcG7llIKeeRCUAwABTAAHZmFjdG9yeXQALExvcmcvYXBhY2hlL2NvbW1vbnMvY29sbGVjdGlvbnMvVHJhbnNmb3JtZXI7eHBzcgA6b3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLmZ1bmN0b3JzLkNoYWluZWRUcmFuc2Zvcm1lcjDHl%2BwoepcEAgABWwANaVRyYW5zZm9ybWVyc3QALVtMb3JnL2FwYWNoZS9jb21tb25zL2NvbGxlY3Rpb25zL1RyYW5zZm9ybWVyO3hwdXIALVtMb3JnLmFwYWNoZS5jb21tb25zLmNvbGxlY3Rpb25zLlRyYW5zZm9ybWVyO71WKvHYNBiZAgAAeHAAAAAFc3IAO29yZy5hcGFjaGUuY29tbW9ucy5jb2xsZWN0aW9ucy5mdW5jdG9ycy5Db25zdGFudFRyYW5zZm9ybWVyWHaQEUECsZQCAAFMAAlpQ29uc3RhbnRxAH4AA3hwdnIAEWphdmEubGFuZy5SdW50aW1lAAAAAAAAAAAAAAB4cHNyADpvcmcuYXBhY2hlLmNvbW1vbnMuY29sbGVjdGlvbnMuZnVuY3RvcnMuSW52b2tlclRyYW5zZm9ybWVyh%2Bj/a3t8zjgCAANbAAVpQXJnc3QAE1tMamF2YS9sYW5nL09iamVjdDtMAAtpTWV0aG9kTmFtZXQAEkxqYXZhL2xhbmcvU3RyaW5nO1sAC2lQYXJhbVR5cGVzdAASW0xqYXZhL2xhbmcvQ2xhc3M7eHB1cgATW0xqYXZhLmxhbmcuT2JqZWN0O5DOWJ8QcylsAgAAeHAAAAACdAAKZ2V0UnVudGltZXVyABJbTGphdmEubGFuZy5DbGFzczurFteuy81amQIAAHhwAAAAAHQACWdldE1ldGhvZHVxAH4AGwAAAAJ2cgAQamF2YS5sYW5nLlN0cmluZ6DwpDh6O7NCAgAAeHB2cQB%2BABtzcQB%2BABN1cQB%2BABgAAAACcHVxAH4AGAAAAAB0AAZpbnZva2V1cQB%2BABsAAAACdnIAEGphdmEubGFuZy5PYmplY3QAAAAAAAAAAAAAAHhwdnEAfgAYc3EAfgATdXIAE1tMamF2YS5sYW5nLlN0cmluZzut0lbn6R17RwIAAHhwAAAAAXQAFXdnZXQgaHR0cDovL3NjYW5tZS5zaHQABGV4ZWN1cQB%2BABsAAAABcQB%2BACBzcQB%2BAA9zcgARamF2YS5sYW5nLkludGVnZXIS4qCk94GHOAIAAUkABXZhbHVleHIAEGphdmEubGFuZy5OdW1iZXKGrJUdC5TgiwIAAHhwAAAAAXNyABFqYXZhLnV0aWwuSGFzaE1hcAUH2sHDFmDRAwACRgAKbG9hZEZhY3RvckkACXRocmVzaG9sZHhwP0AAAAAAAAB3CAAAABAAAAAAeHh4",
@@ -488,7 +739,7 @@ func TestDslExpressions(t *testing.T) {
 		"unpack('>I', '\xac\xd7\t\xd0')":                                                             -272646673,
 		"xor('\x01\x02', '\x02\x01')":                                                                []uint8([]byte{0x3, 0x3}),
 		"xor('\x01\x02\x03\x04', '\x02\x01')":                                                        []uint8([]byte{0x3, 0x3, 0x1, 0x5}),
-		"xor('\x05', '\x01\x02\x03')":                                                                 []uint8([]byte{0x4, 0x7, 0x6}),
+		"xor('\x05', '\x01\x02\x03')":                                                                []uint8([]byte{0x4, 0x7, 0x6}),
 		`count("projectdiscovery", "e")`:                                                             2,
 		`concat(to_title("pRoJeCt"), to_title("diScOvErY"))`:                                         "ProjectDiscovery",
 		`concat(to_title("welcome "), "to", to_title(" watch"), to_title("mojo"))`:                   "Welcome to WatchMojo",
@@ -1240,4 +1491,36 @@ func TestEqualAnyFunction(t *testing.T) {
 		}
 		testDslExpressions(t, tests)
 	})
+}
+
+func TestCacheKeyIsInjective(t *testing.T) {
+	d := dslFunction{Name: "f"}
+	collisions := [][2][]interface{}{
+		{{"a", "b"}, {"a,b"}},
+		{{"a,", "b"}, {"a", ",b"}},
+		{{}, {""}},
+		{{true}, {uint8(1)}},
+		{{true}, {int8(1)}},
+		{{5}, {int64(5)}},
+		{{"ab"}, {[]byte("ab")}},
+	}
+	for _, c := range collisions {
+		k1, _ := d.cacheKey(c[0]...)
+		k2, _ := d.cacheKey(c[1]...)
+		require.NotEqual(t, k1, k2, "%#v vs %#v", c[0], c[1])
+	}
+
+	_, ok := d.cacheKey([]string{"a"})
+	require.False(t, ok, "types without an unambiguous encoding must bypass the cache")
+
+	resultCache.Purge()
+	eval := func(expr string) interface{} {
+		e, err := govaluate.NewEvaluableExpressionWithFunctions(expr, DefaultHelperFunctions)
+		require.NoError(t, err)
+		r, err := e.Evaluate(nil)
+		require.NoError(t, err)
+		return r
+	}
+	require.Equal(t, false, eval(`contains_all("a", "b")`))
+	require.Equal(t, true, eval(`contains_all("a,b")`))
 }

@@ -32,7 +32,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
+	"unicode"
+	"unicode/utf16"
+	"unicode/utf8"
 
 	"github.com/Mzack9999/gcache"
 	"github.com/asaskevich/govalidator"
@@ -71,6 +75,10 @@ var (
 
 	funcSignatureRegex = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
 
+	// unicodeEscapeRegex matches a single escape, trying a UTF-16 surrogate pair
+	// first so JSON-style astral runes ("\ud83d\ude80") decode as one rune
+	unicodeEscapeRegex = regexp.MustCompile(`\\u[dD][89abAB][0-9a-fA-F]{2}\\u[dD][c-fC-F][0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8}`)
+
 	// ErrParsingArg is error when parsing value of argument
 	// Use With Caution: Nuclei ignores this error in extractors(ref: https://github.com/projectdiscovery/nuclei/issues/3950)
 	ErrParsingArg = errkit.New("error parsing argument value")
@@ -79,7 +87,12 @@ var (
 
 	DefaultMaxDecompressionSize = int64(10 * 1024 * 1024) // 10MB
 	DefaultCacheSize            = 6144
-	resultCache                 = gcache.New[string, interface{}](DefaultCacheSize).Build()
+	resultCache                 = gcache.New[uint64, interface{}](DefaultCacheSize).Build()
+	// compiledRegexCache reuses compiled patterns across calls; compilation is
+	// expensive and *regexp.Regexp is safe for concurrent use. It sits behind an
+	// atomic pointer so SetRegexCacheSize can replace it while helpers run; nil
+	// disables caching.
+	compiledRegexCache atomic.Pointer[gcache.Cache[string, *regexp.Regexp]]
 
 	// Initialize faker functions
 	faker = gofakeit.New(0)
@@ -127,6 +140,60 @@ func MustAddFunction(function dslFunction) {
 	}
 }
 
+// compileRegex returns the compiled form of pattern, reusing an earlier
+// compilation where there is one.
+//
+// The DSL regex helpers are commonly called many times with the same pattern
+// but different subjects, so patterns repeat while subjects do not. Compiling
+// on every call is costly; *regexp.Regexp is safe for concurrent use, so one
+// compilation can be shared by every caller.
+func compileRegex(pattern string) (*regexp.Regexp, error) {
+	cache := compiledRegexCache.Load()
+	if cache == nil || len(pattern) > maxCachedRegexLen {
+		return regexp.Compile(pattern)
+	}
+
+	if compiled, err := (*cache).GetIFPresent(pattern); err == nil {
+		return compiled, nil
+	}
+
+	compiled, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+	_ = (*cache).Set(pattern, compiled)
+
+	return compiled, nil
+}
+
+// maxCachedRegexLen bounds cache memory, since a compiled program grows with its
+// pattern: ~3.5 KB at 40 bytes, ~14 KB at 256, ~70 KB at 1 KB. Longer patterns
+// are compiled per call.
+const maxCachedRegexLen = 256
+
+// SetRegexCacheSize replaces the compiled-regex cache with an empty one holding
+// up to size patterns, evicting least recently used first. A size of zero or
+// less disables caching.
+//
+// The default of DefaultCacheSize suits callers with a modest set of patterns.
+// A caller that evaluates more distinct patterns per pass than the cache holds
+// gets no hits at all, since each pattern is evicted before it comes round
+// again; such a caller should size the cache to its pattern set. Memory is
+// roughly 2.5–14 KB per cached pattern, depending on its length.
+func SetRegexCacheSize(size int) {
+	if size <= 0 {
+		compiledRegexCache.Store(nil)
+		return
+	}
+
+	cache := gcache.New[string, *regexp.Regexp](size).LRU().Build()
+	compiledRegexCache.Store(&cache)
+}
+
+func init() {
+	SetRegexCacheSize(DefaultCacheSize)
+}
+
 func init() {
 	// note: index helper is zero based
 	MustAddFunction(NewWithPositionalArgs("index", 2, true, func(args ...interface{}) (interface{}, error) {
@@ -172,6 +239,12 @@ func init() {
 	}))
 	MustAddFunction(NewWithPositionalArgs("to_lower", 1, true, func(args ...interface{}) (interface{}, error) {
 		return strings.ToLower(toString(args[0])), nil
+	}))
+	MustAddFunction(NewWithPositionalArgs("to_slug", 1, true, func(args ...interface{}) (interface{}, error) {
+		words := strings.FieldsFunc(toString(args[0]), func(r rune) bool {
+			return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+		})
+		return strings.Join(words, "-"), nil
 	}))
 	MustAddFunction(NewWithMultipleSignatures("sort", []string{
 		"(input string) string",
@@ -279,7 +352,7 @@ func init() {
 		return strings.ReplaceAll(toString(args[0]), toString(args[1]), toString(args[2])), nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("replace_regex", 3, true, func(args ...interface{}) (interface{}, error) {
-		compiled, err := regexp.Compile(toString(args[1]))
+		compiled, err := compileRegex(toString(args[1]))
 		if err != nil {
 			return nil, err
 		}
@@ -312,7 +385,7 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("gzip", 1, true, func(args ...interface{}) (interface{}, error) {
 		buffer := &bytes.Buffer{}
 		writer := gzip.NewWriter(buffer)
-		if _, err := writer.Write([]byte(args[0].(string))); err != nil {
+		if _, err := writer.Write([]byte(toString(args[0]))); err != nil {
 			_ = writer.Close()
 			return "", err
 		}
@@ -357,7 +430,7 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("zlib", 1, true, func(args ...interface{}) (interface{}, error) {
 		buffer := &bytes.Buffer{}
 		writer := zlib.NewWriter(buffer)
-		if _, err := writer.Write([]byte(args[0].(string))); err != nil {
+		if _, err := writer.Write([]byte(toString(args[0]))); err != nil {
 			_ = writer.Close()
 			return "", err
 		}
@@ -406,7 +479,7 @@ func init() {
 		if err != nil {
 			return "", err
 		}
-		if _, err := writer.Write([]byte(args[0].(string))); err != nil {
+		if _, err := writer.Write([]byte(toString(args[0]))); err != nil {
 			_ = writer.Close()
 			return "", err
 		}
@@ -503,13 +576,16 @@ func init() {
 			}
 
 			var result strings.Builder
-			for _, c := range s {
-				if shouldEscape(c, encodeAllChars) {
-					result.WriteRune(c)
+			// Percent-encoding is defined over bytes, so walk the string a byte
+			// at a time. Ranging over runes turned every byte that is not valid
+			// UTF-8 into U+FFFD, so binary input came back out as %EF%BF%BD and
+			// the original bytes were gone. Every character kept literally is
+			// ASCII, so the byte and the rune agree on that side.
+			for i := 0; i < len(s); i++ {
+				if c := s[i]; shouldEscape(rune(c), encodeAllChars) {
+					result.WriteByte(c)
 				} else {
-					for _, b := range []byte(string(c)) {
-						fmt.Fprintf(&result, "%%%02X", b)
-					}
+					fmt.Fprintf(&result, "%%%02X", c)
 				}
 			}
 			return result.String(), nil
@@ -541,7 +617,12 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 
-			data := args[0]
+			// hexutil.Encode takes any but only reads a string or a []byte,
+			// and returns "" for anything else. govaluate hands a numeric
+			// literal over as a float64, so hex_encode(1234) used to come back
+			// empty, while base64 and md5 encode the digits like every other
+			// helper here does.
+			data := toString(args[0])
 			if len(args) == 1 {
 				// Default behavior: standard hex format
 				return hexutil.Encode(data), nil
@@ -555,10 +636,34 @@ func init() {
 		decodeString, err := hex.DecodeString(toString(args[0]))
 		return string(decodeString), err
 	}))
+	MustAddFunction(NewWithPositionalArgs("unicode_encode", 1, true, func(args ...interface{}) (interface{}, error) {
+		// UTF-16 code units, as JSON and JavaScript escape runes outside the BMP
+		var result strings.Builder
+		for _, u := range utf16.Encode([]rune(toString(args[0]))) {
+			fmt.Fprintf(&result, `\u%04x`, u)
+		}
+		return result.String(), nil
+	}))
+	MustAddFunction(NewWithPositionalArgs("unicode_decode", 1, true, func(args ...interface{}) (interface{}, error) {
+		// lone surrogates and out-of-range code points are left as written
+		result := unicodeEscapeRegex.ReplaceAllStringFunc(toString(args[0]), func(match string) string {
+			r := hexRune(match[2:6])
+			if len(match) == 12 {
+				r = utf16.DecodeRune(r, hexRune(match[8:]))
+			} else if match[1] == 'U' {
+				r = hexRune(match[2:])
+			}
+			if !utf8.ValidRune(r) {
+				return match
+			}
+			return string(r)
+		})
+		return result, nil
+	}))
 	MustAddFunction(NewWithPositionalArgs("hmac", 3, true, func(args ...interface{}) (interface{}, error) {
 		hashAlgorithm := args[0]
-		data := args[1].(string)
-		secretKey := args[2].(string)
+		data := toString(args[1])
+		secretKey := toString(args[2])
 
 		var hashFunction func() hash.Hash
 		switch hashAlgorithm {
@@ -769,7 +874,7 @@ func init() {
 			}
 		}))
 	MustAddFunction(NewWithPositionalArgs("regex", 2, true, func(args ...interface{}) (interface{}, error) {
-		compiled, err := regexp.Compile(toString(args[0]))
+		compiled, err := compileRegex(toString(args[0]))
 		if err != nil {
 			return nil, err
 		}
@@ -783,7 +888,7 @@ func init() {
 				return nil, ErrInvalidDslFunction
 			}
 
-			compiled, err := regexp.Compile(toString(args[0]))
+			compiled, err := compileRegex(toString(args[0]))
 			if err != nil {
 				return nil, err
 			}
@@ -805,7 +910,7 @@ func init() {
 			}
 
 			pattern := toString(args[0])
-			compiled, err := regexp.Compile(pattern)
+			compiled, err := compileRegex(pattern)
 			if err != nil {
 				return nil, err
 			}
@@ -990,22 +1095,22 @@ func init() {
 			}
 			var cidrs []string
 			for _, arg := range args {
-				cidrs = append(cidrs, arg.(string))
+				cidrs = append(cidrs, toString(arg))
 			}
 			return randomip.GetRandomIPWithCidr(cidrs...)
 		}))
 	MustAddFunction(NewWithPositionalArgs("generate_java_gadget", 3, true, func(args ...interface{}) (interface{}, error) {
-		gadget := args[0].(string)
-		cmd := args[1].(string)
-		encoding := args[2].(string)
+		gadget := toString(args[0])
+		cmd := toString(args[1])
+		encoding := toString(args[2])
 		data := deserialization.GenerateJavaGadget(gadget, cmd, encoding)
 		return data, nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("generate_dotnet_gadget", 4, true, func(args ...interface{}) (interface{}, error) {
-		gadget := args[0].(string)
-		cmd := args[1].(string)
-		formatter := args[2].(string)
-		encoding := args[3].(string)
+		gadget := toString(args[0])
+		cmd := toString(args[1])
+		formatter := toString(args[2])
+		encoding := toString(args[3])
 		data := deserialization.GenerateDotNetGadget(gadget, cmd, formatter, encoding)
 		return data, nil
 	}))
@@ -1232,18 +1337,29 @@ func init() {
 			return argStr[start:end], nil
 		}))
 	MustAddFunction(NewWithPositionalArgs("aes_cbc", 3, false, func(args ...interface{}) (interface{}, error) {
-		bKey := []byte(args[1].(string))
-		bIV := []byte(args[2].(string))
-		bPlaintext := pkcs5padding([]byte(args[0].(string)), aes.BlockSize, len(args[0].(string)))
-		block, _ := aes.NewCipher(bKey)
+		bKey := []byte(toString(args[1]))
+		bIV := []byte(toString(args[2]))
+		plaintext := toString(args[0])
+		bPlaintext := pkcs5padding([]byte(plaintext), aes.BlockSize, len(plaintext))
+		// Dropping this error left block nil, and NewCBCEncrypter below then
+		// dereferenced it, so any key that was not 16, 24 or 32 bytes took the
+		// whole run down instead of reporting a bad key.
+		block, err := aes.NewCipher(bKey)
+		if err != nil {
+			return nil, err
+		}
+		// NewCBCEncrypter panics on a mismatched IV, so check it here.
+		if len(bIV) != aes.BlockSize {
+			return nil, fmt.Errorf("iv must be %d bytes, got %d", aes.BlockSize, len(bIV))
+		}
 		ciphertext := make([]byte, len(bPlaintext))
 		mode := cipher.NewCBCEncrypter(block, bIV)
 		mode.CryptBlocks(ciphertext, bPlaintext)
 		return ciphertext, nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("aes_gcm", 2, false, func(args ...interface{}) (interface{}, error) {
-		key := args[0].(string)
-		value := args[1].(string)
+		key := toString(args[0])
+		value := toString(args[1])
 
 		c, err := aes.NewCipher([]byte(key))
 		if nil != err {
@@ -1278,7 +1394,7 @@ func init() {
 			if argSize < 2 || argSize > 4 {
 				return nil, ErrInvalidDslFunction
 			}
-			jsonString := args[0].(string)
+			jsonString := toString(args[0])
 
 			err := json.Unmarshal([]byte(jsonString), &jsonData)
 			if err != nil {
@@ -1286,7 +1402,7 @@ func init() {
 			}
 
 			var jwtAlgorithm jwt.Alg
-			alg := args[1].(string)
+			alg := toString(args[1])
 			algorithm = strings.ToUpper(alg)
 
 			switch algorithm {
@@ -1328,7 +1444,7 @@ func init() {
 			}
 
 			if argSize > 2 {
-				optionalSignature = []byte(args[2].(string))
+				optionalSignature = []byte(toString(args[2]))
 			}
 
 			if argSize > 3 {
@@ -1350,7 +1466,7 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("json_minify", 1, true, func(args ...interface{}) (interface{}, error) {
 		var data map[string]interface{}
 
-		err := json.Unmarshal([]byte(args[0].(string)), &data)
+		err := json.Unmarshal([]byte(toString(args[0])), &data)
 		if err != nil {
 			return nil, err
 		}
@@ -1365,7 +1481,7 @@ func init() {
 	MustAddFunction(NewWithPositionalArgs("json_prettify", 1, true, func(args ...interface{}) (interface{}, error) {
 		var buf bytes.Buffer
 
-		err := json.Indent(&buf, []byte(args[0].(string)), "", "    ")
+		err := json.Indent(&buf, []byte(toString(args[0])), "", "    ")
 		if err != nil {
 			return nil, err
 		}
@@ -1635,7 +1751,8 @@ func init() {
 				return nil, errors.New("not an RSA public key")
 			}
 
-			ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, rsaPub, []byte(plaintext))
+			// Templates expect PKCS #1 v1.5 ciphertext. Go 1.26 deprecates this primitive.
+			ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, rsaPub, []byte(plaintext)) //nolint:staticcheck // SA1019
 			if err != nil {
 				return nil, fmt.Errorf("RSA encryption failed: %w", err)
 			}

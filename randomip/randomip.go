@@ -18,15 +18,21 @@ func GetRandomIPWithCidr(cidrs ...string) (net.IP, error) {
 	if len(cidrs) == 0 {
 		return nil, fmt.Errorf("must specify at least one cidr")
 	}
+	// Every cidr is checked before one is drawn. Checking only the drawn one
+	// made a typo in any of the others surface at random: the same call
+	// succeeded or failed depending on the draw, and the error named whichever
+	// cidr happened to come up.
+	for _, cidr := range cidrs {
+		if !iputil.IsCIDR(cidr) {
+			return nil, fmt.Errorf("%s is not a valid cidr", cidr)
+		}
+	}
+
 	i, err := randint.IntN(len(cidrs))
 	if err != nil {
 		return nil, err
 	}
 	cidr := cidrs[i]
-
-	if !iputil.IsCIDR(cidr) {
-		return nil, fmt.Errorf("%s is not a valid cidr", cidr)
-	}
 
 	baseIp, ipnet, err := net.ParseCIDR(cidr)
 	if err != nil {
