@@ -660,6 +660,21 @@ func init() {
 		})
 		return result, nil
 	}))
+	MustAddFunction(NewWithSingleSignature("env",
+		"(key string, optionalDefault string) string",
+		true,
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) < 1 || len(args) > 2 {
+				return nil, ErrInvalidDslFunction
+			}
+			if value, ok := os.LookupEnv(toString(args[0])); ok {
+				return value, nil
+			}
+			if len(args) == 2 {
+				return toString(args[1]), nil
+			}
+			return "", nil
+		}))
 	MustAddFunction(NewWithPositionalArgs("hmac", 3, true, func(args ...interface{}) (interface{}, error) {
 		hashAlgorithm := args[0]
 		data := toString(args[1])

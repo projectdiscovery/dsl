@@ -464,6 +464,30 @@ func TestAesCbcRejectsBadKeyAndIV(t *testing.T) {
 	}
 }
 
+func TestEnvDSLFunction(t *testing.T) {
+	t.Setenv("DSL_TEST_ENV", "projectdiscovery")
+	t.Setenv("DSL_TEST_EMPTY_ENV", "")
+
+	testCases := map[string]interface{}{
+		`env("DSL_TEST_ENV")`:                     "projectdiscovery",
+		`env("DSL_TEST_ENV", "fallback")`:         "projectdiscovery",
+		`env("DSL_TEST_MISSING_ENV")`:             "",
+		`env("DSL_TEST_MISSING_ENV", "fallback")`: "fallback",
+		`env("DSL_TEST_EMPTY_ENV", "fallback")`:   "",
+		`to_upper(env("DSL_TEST_ENV"))`:           "PROJECTDISCOVERY",
+	}
+
+	for expression, expected := range testCases {
+		t.Run(expression, func(t *testing.T) {
+			compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, DefaultHelperFunctions)
+			require.NoError(t, err)
+			actual, err := compiled.Evaluate(nil)
+			require.NoError(t, err)
+			require.Equal(t, expected, actual)
+		})
+	}
+}
+
 func TestDslFunctionSignatures(t *testing.T) {
 	createSignatureError := func(signature string) string {
 		return fmt.Errorf("%w. correct method signature %q", ErrInvalidDslFunction, signature).Error()
@@ -523,6 +547,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	dec_to_hex(arg1 interface{}) interface{}
 	deflate(arg1 interface{}) interface{}
 	ends_with(str string, suffix ...string) bool
+	env(key string, optionalDefault string) string
 	equals_any(s interface{}, subs ...interface{}) bool
 	generate_dotnet_gadget(arg1, arg2, arg3, arg4 interface{}) interface{}
 	generate_java_gadget(arg1, arg2, arg3 interface{}) interface{}
