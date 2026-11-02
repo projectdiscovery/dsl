@@ -1524,3 +1524,31 @@ func TestCacheKeyIsInjective(t *testing.T) {
 	require.Equal(t, false, eval(`contains_all("a", "b")`))
 	require.Equal(t, true, eval(`contains_all("a,b")`))
 }
+
+// repeat passed its count straight to strings.Repeat, which panics on a
+// negative count, and substr checked start against the length of the string
+// but never against zero, so a negative start panicked on the slice. Counts
+// and offsets in templates routinely come from response data, so neither
+// needs an odd argument type to reach.
+func TestRepeatAndSubstrRejectNegativeArguments(t *testing.T) {
+	t.Run("repeat with a negative count", func(t *testing.T) {
+		require.NotPanics(t, func() {
+			_, err := DefaultHelperFunctions["repeat"]("a", float64(-1))
+			require.Error(t, err, "a negative count should be reported, not panicked on")
+		})
+	})
+
+	t.Run("substr with a negative start", func(t *testing.T) {
+		require.NotPanics(t, func() {
+			_, err := DefaultHelperFunctions["substr"]("hello", float64(-2), float64(2))
+			require.Error(t, err, "a negative start should be reported, not panicked on")
+		})
+	})
+
+	t.Run("substr with a negative start and no end", func(t *testing.T) {
+		require.NotPanics(t, func() {
+			_, err := DefaultHelperFunctions["substr"]("hello", float64(-1))
+			require.Error(t, err, "a negative start should be reported, not panicked on")
+		})
+	})
+}
