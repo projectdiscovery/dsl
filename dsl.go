@@ -346,6 +346,9 @@ func init() {
 		if err != nil {
 			return nil, ErrInvalidDslFunction
 		}
+		if count < 0 {
+			return nil, errkit.New("negative count")
+		}
 		return strings.Repeat(toString(args[0]), count), nil
 	}))
 	MustAddFunction(NewWithPositionalArgs("replace", 3, true, func(args ...interface{}) (interface{}, error) {
@@ -1313,6 +1316,9 @@ func init() {
 			start, err := strconv.Atoi(toString(args[1]))
 			if err != nil {
 				return nil, errkit.Wrap(err, "invalid start position")
+			}
+			if start < 0 {
+				return nil, errkit.New("negative start position")
 			}
 			if start > len(argStr) {
 				return nil, errkit.New("start position bigger than slice length")
