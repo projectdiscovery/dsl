@@ -526,13 +526,13 @@ func init() {
 		"(dateTimeFormat string, optionalUnixTime interface{}) string",
 		false,
 		func(arguments ...interface{}) (interface{}, error) {
-			dateTimeFormat := toString(arguments[0])
-			dateTimeFormatFragment := dateFormatRegex.FindAllStringSubmatch(dateTimeFormat, -1)
-
 			argumentsSize := len(arguments)
-			if argumentsSize < 1 && argumentsSize > 2 {
+			if argumentsSize < 1 || argumentsSize > 2 {
 				return nil, ErrInvalidDslFunction
 			}
+
+			dateTimeFormat := toString(arguments[0])
+			dateTimeFormatFragment := dateFormatRegex.FindAllStringSubmatch(dateTimeFormat, -1)
 
 			currentTime, err := parseTimeOrNow(arguments)
 			if err != nil {
@@ -558,6 +558,9 @@ func init() {
 		"(s string, optionalEncodeAllSpecialChars bool) string",
 		true,
 		func(args ...interface{}) (interface{}, error) {
+			if len(args) == 0 {
+				return nil, ErrInvalidDslFunction
+			}
 			var encodeAllChars bool
 			s := toString(args[0])
 
@@ -688,6 +691,9 @@ func init() {
 		"(s string, optionalConvertAllChars bool) string",
 		true,
 		func(args ...interface{}) (interface{}, error) {
+			if len(args) == 0 {
+				return nil, ErrInvalidDslFunction
+			}
 			s := toString(args[0])
 			if len(args) > 1 {
 				convertAllChars := toBool(args[1])
@@ -725,6 +731,9 @@ func init() {
 		"(body interface{}, substrs ...string) bool",
 		true,
 		func(arguments ...interface{}) (interface{}, error) {
+			if len(arguments) == 0 {
+				return nil, ErrInvalidDslFunction
+			}
 			body := toString(arguments[0])
 			for _, value := range arguments[1:] {
 				if !strings.Contains(body, toString(value)) {
@@ -737,6 +746,9 @@ func init() {
 		"(body interface{}, substrs ...string) bool",
 		true,
 		func(arguments ...interface{}) (interface{}, error) {
+			if len(arguments) == 0 {
+				return nil, ErrInvalidDslFunction
+			}
 			body := toString(arguments[0])
 			for _, value := range arguments[1:] {
 				if strings.Contains(body, toString(value)) {
@@ -1141,6 +1153,9 @@ func init() {
 		"(input string, optionalLayout string) int64",
 		true,
 		func(args ...interface{}) (interface{}, error) {
+			if len(args) == 0 {
+				return nil, ErrInvalidDslFunction
+			}
 			input := toString(args[0])
 
 			nr, err := strconv.ParseFloat(input, 64)
