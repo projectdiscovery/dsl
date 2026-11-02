@@ -1351,6 +1351,13 @@ func evaluateExpression(t *testing.T, dslExpression string, functions ...dslFunc
 	return actualResult
 }
 
+func TestFakerDslExpressionsWithArguments(t *testing.T) {
+	require.EqualValues(t, 5, evaluateFakerExpression(t, "rand_number(5, 5)"))
+	require.Regexp(t, `^[a-zA-Z]{3}$`, evaluateFakerExpression(t, `rand_lexify("???")`))
+	require.Regexp(t, `^[0-9]{3}$`, evaluateFakerExpression(t, `rand_numerify("###")`))
+	require.Len(t, evaluateFakerExpression(t, "rand_password(true, true, true, true, false, 8)"), 8)
+}
+
 func evaluateFakerExpression(t *testing.T, dslExpression string, functions ...dslFunction) interface{} {
 	helperFunctions := maps.Clone(FakerFunctions())
 	for _, function := range functions {
