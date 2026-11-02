@@ -1848,8 +1848,8 @@ func FakerFunctions() map[string]govaluate.ExpressionFunction {
 		funcName := "rand_" + slug.Make(fInfo.Display)
 		fakerFunc := func(fInfo gofakeit.Info) func(args ...any) (any, error) {
 			return func(args ...any) (any, error) {
-				// Set function and params
-				// Copied from: https://github.com/brianvoe/gofakeit/blob/e7c55ca0031ef39bb7673deedfc9f04fc17d8072/cmd/gofakeit/gofakeit.go#L112
+				// Set function and params. Unlike gofakeit's CLI, args holds only the
+				// params, not the function name, so they map to fInfo.Params 1:1.
 				params := gofakeit.NewMapParams()
 				paramsLen := len(fInfo.Params)
 				argsLen := len(args)
@@ -1857,19 +1857,9 @@ func FakerFunctions() map[string]govaluate.ExpressionFunction {
 					return nil, fmt.Errorf("expected %d arguments, got %d", paramsLen, argsLen)
 				}
 
-				if paramsLen > 0 {
-					for i := 0; i < argsLen; i++ {
-						if i == 0 {
-							continue
-						}
-
-						// Map argument to param field
-						if paramsLen >= i {
-							p := fInfo.Params[i-1]
-							arg := fmt.Sprintf("%v", args[i])
-							params.Add(p.Field, arg)
-						}
-					}
+				// Map each argument to its param field
+				for i, p := range fInfo.Params {
+					params.Add(p.Field, toString(args[i]))
 				}
 
 				value, err := fInfo.Generate(faker, params, &fInfo)
