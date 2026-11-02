@@ -427,6 +427,7 @@ func TestHexEncodeAcceptsNumbers(t *testing.T) {
 // govaluate hands every numeric literal over as a float64, so a template can
 // reach any helper with one. Returning an error is fine, panicking is not: the
 // panic leaves the helper, crosses govaluate and takes the scan down with it.
+// The same goes for calling a helper with no arguments at all.
 func TestHelpersDoNotPanicOnNumericArgument(t *testing.T) {
 	// These reach the network or block, so they are exercised elsewhere.
 	skip := map[string]bool{
@@ -446,7 +447,7 @@ func TestHelpersDoNotPanicOnNumericArgument(t *testing.T) {
 
 	for _, name := range names {
 		t.Run(name, func(t *testing.T) {
-			for arity := 1; arity <= 4; arity++ {
+			for arity := 0; arity <= 4; arity++ {
 				args := make([]interface{}, arity)
 				for i := range args {
 					args[i] = float64(1234)
@@ -824,6 +825,13 @@ func TestDateTimeDSLFunction(t *testing.T) {
 		expectedFormattedTime := currentTime.Format("02-01-2006 15:04")
 		testDateTimeFormat(t, "02-01-2006 15:04", dateTimeFunction, expectedFormattedTime, currentUnixTime)
 		testDateTimeFormat(t, "%D-%M-%Y %H:%m", dateTimeFunction, expectedFormattedTime, currentUnixTime)
+	})
+
+	t.Run("wrong number of arguments", func(t *testing.T) {
+		_, err := DefaultHelperFunctions["date_time"]()
+		require.ErrorIs(t, err, ErrInvalidDslFunction)
+		_, err = DefaultHelperFunctions["date_time"]("%Y", 0, 1)
+		require.ErrorIs(t, err, ErrInvalidDslFunction)
 	})
 }
 
