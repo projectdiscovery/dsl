@@ -15,9 +15,10 @@ import (
 )
 
 // Configuration comes from the environment, since a DSL helper has no other
-// place to carry it. With no LLM_BASE_URL or LLM_PROVIDER, the helper keeps the
-// historical OpenAI + gpt-4o-mini default so existing OPENAI_API_KEY setups
-// keep working.
+// place to carry it. With no LLM_BASE_URL or LLM_PROVIDER, the helper uses
+// OpenAI so existing OPENAI_API_KEY setups keep working. The default model is
+// gpt-6-luna, OpenAI's replacement for gpt-4o-mini, which leaves the API on
+// Jan 14, 2027.
 const (
 	envBaseURL  = "LLM_BASE_URL"
 	envProvider = "LLM_PROVIDER"
@@ -29,7 +30,7 @@ const (
 	envLegacyAPIKey = "OPENAI_API_KEY"
 
 	defaultProvider       = "openai"
-	defaultModel          = "gpt-4o-mini"
+	defaultModel          = "gpt-6-luna"
 	defaultTimeout        = 30 * time.Second
 	defaultMaxConcurrency = 4
 	defaultMaxCalls       = 1024
