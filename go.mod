@@ -24,7 +24,7 @@ require (
 	golang.org/x/text v0.43.0
 )
 
-require github.com/projectdiscovery/wappalyzergo v0.3.8
+require github.com/projectdiscovery/wappalyzergo v0.3.10
 
 require (
 	github.com/google/go-cmp v0.7.0 // indirect
@@ -50,7 +50,7 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/net v0.61.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sync v0.24.0
 	golang.org/x/sys v0.49.0 // indirect
 )
